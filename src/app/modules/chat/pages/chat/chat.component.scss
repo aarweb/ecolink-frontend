@@ -1,0 +1,13 @@
+@media (max-width: 768px) {
+
+    /* Aplica solo en pantallas pequeñas */
+    .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+        /* Oculta la barra en navegadores basados en WebKit */
+    }
+
+    .hide-scrollbar {
+        scrollbar-width: none;
+        /* Oculta la barra en Firefox */
+    }
+}

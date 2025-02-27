@@ -1,0 +1,7 @@
+.contact {
+    transition: background-color 300ms;
+
+    &:hover {
+        background-color: lightgray;
+    }
+}
