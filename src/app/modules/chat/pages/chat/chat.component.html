@@ -9,26 +9,33 @@
                         <h3 class="bi bi-envelope-fill display-6 d-block d-md-none"></h3>
                     </div>
                     <div class="flex-grow-1 overflow-auto overflow-x-hidden hide-scrollbar" style="height: 70vh;">
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
-                        <chat-user-list></chat-user-list>
+                        <chat-user-list *ngFor="let chat of chats" [chat]="chat" (selectChat)="onSelectChat($event)"
+                            [id_chat]="id_chat"></chat-user-list>
                     </div>
                 </div>
             </div>
-            <div class="col-9 p-0">
-                <div class="bg-danger w-100 h-100 p-4">
+            <div class="col-9 p-0 border-1 border-start border-black">
+                <div class="w-100 h-100 p-4 d-flex flex-column justify-content-center align-items-center text-center"
+                    *ngIf="id_chat == null">
+                    <i class="bi bi-chat-left-text display-1 text-primary"></i>
+                    <h3 class="display-4 mt-3">No chat selected</h3>
+                    <p class="text-muted">Select a conversation from the list to start chatting.</p>
+                </div>
+                <div class="w-100 h-100  overflow-auto overflow-x-hidden hide-scrollbar" style="height: 70vh;"
+                    *ngIf="id_chat != null">
+                    <h3 class="display-4 mt-3">Chat selected</h3>
+                    <div *ngFor="let message of messages" class="message">
+                        <p><strong>{{ message.sender == user.id  ? user.name : receiver }}:</strong> {{ message.content }}</p>
+                        <small>{{ message.timestamp | date: 'short' }}</small>
+                    </div>
+                    <div class="message-input">
+                        <textarea [(ngModel)]="messageContent" placeholder="Escribe tu mensaje..."></textarea>
+                        <button (click)="sendMessage()">Enviar</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <shared-footer class="bg-light text-center mt-auto"></shared-footer>
 </div>

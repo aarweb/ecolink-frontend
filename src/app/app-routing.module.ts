@@ -48,6 +48,10 @@ const routes: Routes = [
     loadChildren: () => import('./modules/cart/cart.module').then(m => m.CartModule)
   },
   {
+    path: 'chat',
+    loadChildren: () => import('./modules/chat/chat.module').then(m => m.ChatModule)
+  },
+  {
     path: 'admin',
     loadChildren: () => import('./modules/admin/admin.module').then(m => m.AdminModule)
   },
