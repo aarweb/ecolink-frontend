@@ -10,27 +10,52 @@
                     </div>
                     <div class="flex-grow-1 overflow-auto overflow-x-hidden hide-scrollbar" style="height: 70vh;">
                         <chat-user-list *ngFor="let chat of chats" [chat]="chat" (selectChat)="onSelectChat($event)"
-                            [id_chat]="id_chat"></chat-user-list>
+                            [id_chat]="chatSelected?.id ?? null"></chat-user-list>
                     </div>
                 </div>
             </div>
             <div class="col-9 p-0 border-1 border-start border-black">
                 <div class="w-100 h-100 p-4 d-flex flex-column justify-content-center align-items-center text-center"
-                    *ngIf="id_chat == null">
+                    *ngIf="chatSelected?.id == null">
                     <i class="bi bi-chat-left-text display-1 text-primary"></i>
                     <h3 class="display-4 mt-3">No chat selected</h3>
                     <p class="text-muted">Select a conversation from the list to start chatting.</p>
                 </div>
-                <div class="w-100 h-100  overflow-auto overflow-x-hidden hide-scrollbar" style="height: 70vh;"
-                    *ngIf="id_chat != null">
-                    <h3 class="display-4 mt-3">Chat selected</h3>
-                    <div *ngFor="let message of messages" class="message">
-                        <p><strong>{{ message.sender == user.id  ? user.name : receiver }}:</strong> {{ message.content }}</p>
-                        <small>{{ message.timestamp | date: 'short' }}</small>
+                <!-- Chat messages -->
+                <div class="w-100 h-100 d-flex flex-column overflow-auto overflow-x-hidden hide-scrollbar"
+                    style="height: 70vh;" *ngIf="chatSelected?.id != null">
+                    <div class="d-flex align-items-center border-bottom p-3">
+                        <img [src]="chatSelected?.imageUrl" alt="Avatar" class="rounded-circle me-3"
+                            style="width: 50px; height: 50px;">
+                        <h3 class="h5 m-0">{{ chatSelected?.name }}</h3>
                     </div>
-                    <div class="message-input">
-                        <textarea [(ngModel)]="messageContent" placeholder="Escribe tu mensaje..."></textarea>
-                        <button (click)="sendMessage()">Enviar</button>
+
+                    <div class="flex-grow-1 overflow-auto p-3 d-flex flex-column" style="max-height: 60vh;">
+                        <div *ngFor="let message of messages" class="d-flex mb-2" [ngClass]="{ 
+                                'justify-content-end': message.sender == user.id, 
+                                'justify-content-start': message.sender != user.id 
+                            }" [id]="message.timestamp">
+
+                            <div class="card py-2 px-3 shadow-sm"
+                                [ngClass]="{ 'bg-primary text-white': message.sender == user.id, 'bg-light': message.sender != user.id }"
+                                style="max-width: 70%;">
+                                <!-- ? Deberia mostrar la info del perfil? Whatsapp y telegram no lo ponen  -->
+                                <!-- <div class="d-flex align-items-center mb-2">
+                                    <img [src]="message.sender == user.id ? user?.imageUrl : chatSelected?.imageUrl"
+                                        alt="Avatar" class="rounded-circle me-2" style="width: 30px; height: 30px;">
+                                    <strong class="text-truncate">{{ message.sender == user.id ? user.name : receiver
+                                        }}</strong>
+                                </div> -->
+                                <p class="m-0">{{ message.content }}</p>
+                                <small class="text-end">{{formatTime(message.timestamp)}}</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex border-top p-3 bg-white">
+                        <input type="text" class="form-control me-2" [(ngModel)]="messageContent" rows="1"
+                            placeholder="Escribe tu mensaje..." (keypress)="handleKeyPress($event)" />
+                        <button class="btn btn-primary" (click)="sendMessage()">Enviar</button>
                     </div>
                 </div>
             </div>

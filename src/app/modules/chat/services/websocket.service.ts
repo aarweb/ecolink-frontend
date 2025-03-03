@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { ChatUser } from '../models/ChatUser';
 
 @Injectable({
   providedIn: 'root'
@@ -10,22 +11,24 @@ export class WebSocketService {
   private connected: boolean = false;
   private jwt: string | null = null;
   private chatMessages: { [chatId: number]: any[] } = {};
+  private subscribedChats: Set<number> = new Set();
+  private subscriptions: Map<number, any> = new Map();
 
   constructor() { }
 
   initConnectionSocket() {
     if (this.connected) {
-      console.log('WebSocket ya está conectado.');
       return;
     }
 
     const socket = new SockJS('http://localhost:8080/chat', null, {});
     this.stompClient = Stomp.over(() => socket);
 
+    this.stompClient.debug = () => {};
+    
     this.jwt = this.getCookie('jwt');
 
     if (!this.jwt) {
-      console.error('No se encontró el token JWT.');
       return;
     }
 
@@ -34,7 +37,6 @@ export class WebSocketService {
         Authorization: `Bearer ${this.jwt}`
       },
       (frame: any) => {
-        console.log('Conectado:', frame);
         this.connected = true;
       },
       (error: any) => {
@@ -50,39 +52,51 @@ export class WebSocketService {
     return null;
   }
 
-
-  joinChat(chat_id: number) {
+  joinChat(chat: ChatUser) {
+    const chat_id = chat.id;
     if (!this.connected) {
-      console.error('WebSocket no está conectado.');
       return;
     }
+
+    if (this.subscribedChats.has(chat_id)) {
+      return;
+    }
+
+    this.subscribedChats.add(chat_id);
 
     if (!this.chatMessages[chat_id]) {
       this.chatMessages[chat_id] = [];
     }
 
-    this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
-      console.log('Mensaje recibido:', JSON.parse(message.body));
+    const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
       const parsedMessage = JSON.parse(message.body);
       const { content, sender, timestamp } = parsedMessage;
 
-      this.chatMessages[chat_id].push({
-        content,
-        sender,
-        timestamp
-      });
-
+      this.chatMessages[chat_id].push({ content, sender, timestamp });
+      chat.lastMessage = content;
     });
+
+    this.subscriptions.set(chat_id, subscription);
   }
 
-  sendMessage(chat_id: number, message: string, sender: number) {
-  
+  leaveChat(chat_id: number) {
     if (!this.connected) {
-      console.error('WebSocket no está conectado.');
       return;
     }
 
-    if(sender === null) {
+    if (this.subscriptions.has(chat_id)) {
+      this.subscriptions.get(chat_id).unsubscribe();
+      this.subscriptions.delete(chat_id);
+      this.subscribedChats.delete(chat_id);
+    }
+  }
+
+  sendMessage(chat_id: number, message: string, sender: number) {
+    if (!this.connected) {
+      return;
+    }
+
+    if (sender === null) {
       return;
     }
 
@@ -97,14 +111,10 @@ export class WebSocketService {
           content: message
         })
       );
-      console.log(`Mensaje enviado al chat ${chat_id}: ${message}`);
-    } else {
-      console.error("No se puede enviar el mensaje: WebSocket no está conectado.");
     }
   }
 
   getMessages(chat_id: number): any[] {
     return this.chatMessages[chat_id] || [];
   }
-
 }

@@ -1,11 +1,11 @@
 <div class="d-flex justify-content-center justify-content-md-start p-2 gap-md-3 align-items-md-center overflow-hidden mw-100 user-select-none  border-bottom border-black contact"
-    (click)="onSelectChat()" style="cursor: pointer;"  [class.selected]="chat.id == id_chat">
+    (click)="onSelectChat()" style="cursor: pointer;" [class.selected]="chat.id == id_chat">
     <div>
         <img [src]="chat.imageUrl" [alt]="'Image ' +chat.name"
             class="rounded-circle border border-black object-fit-cover" style="width: 50px; height: 50px;">
     </div>
     <div class="d-none d-md-block text-truncate w-75">
         <p class="fs-5 fw-medium text-truncate m-0">{{chat.name}}</p>
-        <p class="text-truncate m-0">Default last comment!</p>
+        <p class="text-truncate m-0 text-dark-emphasis">{{chat.lastMessage}}</p>
     </div>
 </div>

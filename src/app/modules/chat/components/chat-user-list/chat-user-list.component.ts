@@ -8,19 +8,20 @@ import { ChatUser } from '../../models/ChatUser';
 })
 export class ChatUserListComponent {
   @Input() chat!: ChatUser;
-  @Input() id_chat!: number | null;
+  @Input() id_chat: number | null = null;
   @Output() selectChat = new EventEmitter<number>();
 
   userId!: number;
 
   constructor() {
-    
+
   }
 
   ngOnInit() {
     this.userId = this.chat.id;
+
   }
-  
+
   onSelectChat = () => {
     this.selectChat.emit(this.userId)
   }
