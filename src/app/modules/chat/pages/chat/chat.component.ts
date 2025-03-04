@@ -51,6 +51,8 @@ export class ChatComponent implements OnInit {
         }, 100);
       });
     });
+
+    
   }
 
   onSelectChat(id: number) {

@@ -15,4 +15,8 @@ export class ChatService {
   getChats(): Observable<ChatUser[]> {
     return this.http.get<ChatUser[]>(this.baseUrl, {withCredentials: true});
   }
+
+  getMessages(id: number): any[] {
+    return [];
+  }
 }
