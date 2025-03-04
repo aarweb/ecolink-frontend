@@ -24,8 +24,8 @@ export class WebSocketService {
     const socket = new SockJS('http://localhost:8080/chat', null, {});
     this.stompClient = Stomp.over(() => socket);
 
-    this.stompClient.debug = () => {};
-    
+    this.stompClient.debug = () => { };
+
     this.jwt = this.getCookie('jwt');
 
     if (!this.jwt) {

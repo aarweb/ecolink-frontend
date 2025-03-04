@@ -48,7 +48,7 @@ export class ChatComponent implements OnInit {
 
         setTimeout(() => {
           this.webSocketService.joinChat(chat);
-        }, 500);
+        }, 100);
       });
     });
   }
@@ -70,6 +70,18 @@ export class ChatComponent implements OnInit {
     if (this.chatSelected && this.messageContent) {
       this.webSocketService.sendMessage(this.chatSelected.id, this.messageContent, this.user.id);
       this.messageContent = '';
+      setTimeout(() => {
+        const message = this.messages[this.messages.length - 1];
+        const messageElement = document.getElementById(message.timestamp);
+
+        if (messageElement) {
+          messageElement.scrollIntoView({
+            behavior: 'auto',
+            block: 'end',
+            inline: 'nearest'
+          });
+        }
+      }, 100);
     }
   }
 
@@ -85,9 +97,8 @@ export class ChatComponent implements OnInit {
     if (isNaN(validTimestamp)) {
       return 'Invalid time';
     }
-  
+
     const date = new Date(validTimestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
-  
 }
