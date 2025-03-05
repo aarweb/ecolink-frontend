@@ -16,14 +16,14 @@
             </div>
             <div class="col-9 p-0 border-1 border-start border-black">
                 <div class="w-100 h-100 p-4 d-flex flex-column justify-content-center align-items-center text-center"
-                    *ngIf="chatSelected?.id == null">
+                    *ngIf="chatSelected?.id == null || loading">
                     <i class="bi bi-chat-left-text display-1 text-primary"></i>
                     <h3 class="display-4 mt-3">No chat selected</h3>
                     <p class="text-muted">Select a conversation from the list to start chatting.</p>
                 </div>
                 <!-- Chat messages -->
                 <div class="w-100 h-100 d-flex flex-column overflow-auto overflow-x-hidden hide-scrollbar scroll-container"
-                    style="height: 60vh;" *ngIf="chatSelected?.id != null">
+                    style="height: 60vh;" *ngIf="chatSelected?.id != null && !loading">
                     <div class="d-flex align-items-center border-bottom p-3">
                         <img [src]="chatSelected?.imageUrl" alt="Avatar" class="rounded-circle me-3"
                             style="width: 50px; height: 50px;">
@@ -40,7 +40,7 @@
                                 [ngClass]="{ 'bg-primary text-white': message.sender == user.id, 'bg-light': message.sender != user.id }"
                                 style="max-width: 70%;">
                                 <p class="m-0">{{ message.content }}</p>
-                                <small class="text-end">{{formatTime(message.timestamp)}}</small>
+                                <small class="text-end">{{message.timestamp | date:'HH:mm'}}</small>
                             </div>
                         </div>
                     </div>

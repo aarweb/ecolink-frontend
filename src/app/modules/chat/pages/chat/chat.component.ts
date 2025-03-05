@@ -4,6 +4,9 @@ import { ChatService } from '../../services/chat.service';
 import { ChatUser } from '../../models/ChatUser';
 import { IMessage } from '@stomp/stompjs';
 import { WebSocketService } from '../../services/websocket.service';
+import { ActivatedRoute, Router } from '@angular/router';
+import { User } from '../../../../core/models/User';
+import { Successfull } from '../../../blog/models/Successfull';
 
 @Component({
   selector: 'app-chat',
@@ -11,20 +14,29 @@ import { WebSocketService } from '../../services/websocket.service';
   styleUrls: ['./chat.component.scss']
 })
 export class ChatComponent implements OnInit {
+  id: number = 0;
   chats: ChatUser[] = [];
   messages: any[] = [];
   messageContent: string = '';
   chatSelected: ChatUser | null = null;
   receiver: string = 'user';
   user: any;
+  loading: boolean = false;
 
   constructor(
     private authService: AuthService,
     private chatService: ChatService,
-    private webSocketService: WebSocketService
+    private webSocketService: WebSocketService,
+    private route: ActivatedRoute,
+    private router: Router
   ) { }
 
   ngOnInit(): void {
+    this.loading = true;
+    this.route.params.subscribe(params => {
+      this.id = params['id'];
+    });
+
     this.webSocketService.initConnectionSocket();
 
     this.authService.getCurrentUser().subscribe((user: any) => {
@@ -52,7 +64,26 @@ export class ChatComponent implements OnInit {
       });
     });
 
-    
+    if (this.id) {
+      this.chatService.getNewUser(this.id).subscribe((user: User) => {
+        const newChat: ChatUser = {
+          id: -1,
+          name: user.name,
+          imageUrl: user.imageUrl,
+          lastMessage: ''
+        };
+        this.authService.getImage('user', user.imageUrl).subscribe((imageUrl: string) => {
+          newChat.imageUrl = imageUrl;
+        });
+        this.chats.push(newChat);
+        this.onSelectChat(-1);
+      },
+        error => {
+          this.router.navigate(['/chat']);
+        }
+      );
+    }
+    this.loading = false;
   }
 
   onSelectChat(id: number) {
@@ -64,26 +95,34 @@ export class ChatComponent implements OnInit {
     this.receiver = this.chatSelected?.name || 'user';
     if (this.chatSelected) {
       this.messages = [];
-      this.messages = this.webSocketService.getMessages(id);
+      if (this.chatSelected.id != -1) {
+        this.messages = this.webSocketService.getMessages(id);
+      }
     }
   }
 
   sendMessage() {
     if (this.chatSelected && this.messageContent) {
-      this.webSocketService.sendMessage(this.chatSelected.id, this.messageContent, this.user.id);
-      this.messageContent = '';
-      setTimeout(() => {
-        const message = this.messages[this.messages.length - 1];
-        const messageElement = document.getElementById(message.timestamp);
+      if (this.chatSelected.id >= 0) {
+        this.webSocketService.sendMessage(this.chatSelected.id, this.messageContent, this.user.id);
+        this.messageContent = '';
+        setTimeout(() => {
+          const message = this.messages[this.messages.length - 1];
+          const messageElement = document.getElementById(message.timestamp);
 
-        if (messageElement) {
-          messageElement.scrollIntoView({
-            behavior: 'auto',
-            block: 'end',
-            inline: 'nearest'
-          });
-        }
-      }, 100);
+          if (messageElement) {
+            messageElement.scrollIntoView({
+              behavior: 'auto',
+              block: 'end',
+              inline: 'nearest'
+            });
+          }
+        }, 100);
+      } else {
+        this.chatService.create(this.id, this.messageContent).subscribe((message: Successfull) => {
+          this.router.navigate(['/chat/']);
+        });
+      }
     }
   }
 
@@ -92,15 +131,5 @@ export class ChatComponent implements OnInit {
       event.preventDefault();
       this.sendMessage();
     }
-  }
-
-  formatTime(timestamp: number): string {
-    const validTimestamp = Number(timestamp);
-    if (isNaN(validTimestamp)) {
-      return 'Invalid time';
-    }
-
-    const date = new Date(validTimestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 }

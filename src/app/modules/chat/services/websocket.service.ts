@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { ChatUser } from '../models/ChatUser';
+import { ChatService } from './chat.service';
 
 @Injectable({
   providedIn: 'root'
@@ -14,7 +15,7 @@ export class WebSocketService {
   private subscribedChats: Set<number> = new Set();
   private subscriptions: Map<number, any> = new Map();
 
-  constructor() { }
+  constructor(private chatService: ChatService) { }
 
   initConnectionSocket() {
     if (this.connected) {
@@ -54,6 +55,9 @@ export class WebSocketService {
 
   joinChat(chat: ChatUser) {
     const chat_id = chat.id;
+    if (!chat_id) {
+      return;
+    }
     if (!this.connected) {
       return;
     }
@@ -67,6 +71,11 @@ export class WebSocketService {
     if (!this.chatMessages[chat_id]) {
       this.chatMessages[chat_id] = [];
     }
+
+    this.chatService.getMessages(chat_id).subscribe((messages: any[]) => {
+      this.chatMessages[chat_id] = messages;
+      chat.lastMessage = messages[messages.length - 1]?.content || '';
+    });
 
     const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
       const parsedMessage = JSON.parse(message.body);
@@ -100,17 +109,19 @@ export class WebSocketService {
       return;
     }
 
-    if (this.stompClient && this.stompClient.connected) {
-      this.stompClient.send(
-        `/app/chat/${chat_id}/message`,
-        {
-          Authorization: `Bearer ${this.jwt}`,
-        },
-        JSON.stringify({
-          sender: sender,
-          content: message
-        })
-      );
+    if (chat_id >= 0) {
+      if (this.stompClient && this.stompClient.connected) {
+        this.stompClient.send(
+          `/app/chat/${chat_id}/message`,
+          {
+            Authorization: `Bearer ${this.jwt}`,
+          },
+          JSON.stringify({
+            sender: sender,
+            content: message
+          })
+        );
+      }
     }
   }
 
