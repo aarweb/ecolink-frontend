@@ -10,6 +10,10 @@ const routes: Routes = [
   {
     path: ':id',
     component: ChatComponent
+  },
+  {
+    path: 'new/:id',
+    component: ChatComponent
   }
 ];
 

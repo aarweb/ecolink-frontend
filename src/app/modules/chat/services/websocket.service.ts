@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, OnInit } from '@angular/core';
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { ChatUser } from '../models/ChatUser';
@@ -17,33 +17,36 @@ export class WebSocketService {
 
   constructor(private chatService: ChatService) { }
 
-  initConnectionSocket() {
-    if (this.connected) {
-      return;
-    }
-
-    const socket = new SockJS('http://localhost:8080/chat', null, {});
-    this.stompClient = Stomp.over(() => socket);
-
-    this.stompClient.debug = () => { };
-
-    this.jwt = this.getCookie('jwt');
-
-    if (!this.jwt) {
-      return;
-    }
-
-    this.stompClient.connect(
-      {
-        Authorization: `Bearer ${this.jwt}`
-      },
-      (frame: any) => {
-        this.connected = true;
-      },
-      (error: any) => {
-        console.error('Error de conexión WebSocket:', error);
+  initConnectionSocket(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.connected) {
+        return resolve();
       }
-    );
+
+      const socket = new SockJS('http://localhost:8080/chat', null, {});
+      this.stompClient = Stomp.over(() => socket);
+
+      this.stompClient.debug = () => { };
+
+      this.jwt = this.getCookie('jwt');
+
+      if (!this.jwt) {
+        reject('The user is not authenticated');
+      }
+      this.stompClient.connect(
+        {
+          Authorization: `Bearer ${this.jwt}`
+        },
+        (frame: any) => {
+          this.connected = true;
+          resolve();
+        },
+        (error: any) => {
+          console.error('Error to connect to WebSocket:', error);
+          reject(error);
+        }
+      );
+    });
   }
 
   getCookie(name: string): string | null {
@@ -53,39 +56,50 @@ export class WebSocketService {
     return null;
   }
 
-  joinChat(chat: ChatUser) {
-    const chat_id = chat.id;
-    if (!chat_id) {
-      return;
-    }
-    if (!this.connected) {
-      return;
-    }
+  joinChat(chat: ChatUser): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const chat_id = chat.id;
+      if (!chat_id) {
+        console.error('Cannot join a chat without ID');
+        return reject('Cannot join a chat without ID');
+      }
 
-    if (this.subscribedChats.has(chat_id)) {
-      return;
-    }
+      if (!this.connected) {
+        console.error('Cannot join a chat without connection');
+        return reject('Cannot join a chat without connection');
+      }
 
-    this.subscribedChats.add(chat_id);
+      if (this.subscribedChats.has(chat_id)) {
+        return resolve();
+      }
 
-    if (!this.chatMessages[chat_id]) {
-      this.chatMessages[chat_id] = [];
-    }
+      const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
+        const parsedMessage = JSON.parse(message.body);
+        const { content, sender, timestamp } = parsedMessage;
 
-    this.chatService.getMessages(chat_id).subscribe((messages: any[]) => {
-      this.chatMessages[chat_id] = messages;
-      chat.lastMessage = messages[messages.length - 1]?.content || '';
+        if (!this.chatMessages[chat_id]) {
+          this.chatMessages[chat_id] = [];
+        }
+
+        this.chatMessages[chat_id].push({ content, sender, timestamp });
+        chat.lastMessage = content;
+      });
+
+      this.subscribedChats.add(chat_id);
+      this.subscriptions.set(chat_id, subscription);
+
+      this.chatService.getMessages(chat_id).subscribe(
+        (messages: any[]) => {
+          this.chatMessages[chat_id] = messages;
+          chat.lastMessage = messages[messages.length - 1]?.content || '';
+          resolve();
+        },
+        error => {
+            console.error('Error fetching messages:', error);
+            reject(error);
+        }
+      );
     });
-
-    const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
-      const parsedMessage = JSON.parse(message.body);
-      const { content, sender, timestamp } = parsedMessage;
-
-      this.chatMessages[chat_id].push({ content, sender, timestamp });
-      chat.lastMessage = content;
-    });
-
-    this.subscriptions.set(chat_id, subscription);
   }
 
   leaveChat(chat_id: number) {
@@ -110,7 +124,7 @@ export class WebSocketService {
     }
 
     if (chat_id >= 0) {
-      if (this.stompClient && this.stompClient.connected) {
+      if (this.stompClient && this.stompClient.connected && message.length <= 255 && message.length > 0) {
         this.stompClient.send(
           `/app/chat/${chat_id}/message`,
           {

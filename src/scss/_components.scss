@@ -49,3 +49,11 @@ $pagination-active-bg: #2E7D32;
 $pagination-disabled-bg: #A5D6A7;
 $pagination-hover-bg: #388E3C;
 $pagination-hover-color: #FFF;
+
+
+//************************************************
+// Chat Input Error
+//************************************************
+.input-error {
+  @extend .border-danger;
+}

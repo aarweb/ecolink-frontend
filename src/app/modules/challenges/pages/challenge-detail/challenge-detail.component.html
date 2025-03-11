@@ -1,109 +1,104 @@
 <div class="d-flex flex-column min-vh-100">
   <shared-header></shared-header>
 
-<div class="d-flex justify-content-between bg-greendark p-3 p-md-5">
-  <div class="d-flex flex-column justify-content-between">
-    <h1 class="text-add1">{{ challenge.title }}</h1>
-    <p class="text-white m-0 fs-5 fw-semibold">
-      By {{ challenge.company?.name }}
-    </p>
+  <div class="d-flex justify-content-between bg-greendark p-3 p-md-5">
+    <div class="d-flex flex-column justify-content-between">
+      <h1 class="text-add1">{{ challenge.title }}</h1>
+      <p class="text-white m-0 fs-5 fw-semibold">
+        By {{ challenge.company?.name }}
+      </p>
+    </div>
+    <img [src]="challenge.company?.imageUrl" class="text-white rounded-circle" [alt]="challenge.company?.name"
+      width="75px" height="75px" />
   </div>
-  <img
-    [src]="challenge.company?.imageUrl"
-    class="text-white rounded-circle"
-    [alt]="challenge.company?.name"
-    width="75px"
-    height="75px"
-  />
-</div>
 
-<div class="bg-add1 border-bottom border-1 p-4">
-  <h3 class="fs-4">Description of the challenge</h3>
-  <p class="m-0">{{ challenge.description }}</p>
-</div>
+  <div class="bg-add1 border-bottom border-1 p-4">
+    <h3 class="fs-4">Description of the challenge</h3>
+    <p class="m-0">{{ challenge.description }}</p>
+  </div>
 
-<div class="row p-4 bg-add1">
-  <div class="col-6 mb-4">
-    <div class="flex-grow-1 bg-success-subtle p-3 rounded-3">
-      <h3 class="text-greendark mb-3 fs-4">Requirements</h3>
-      <div *ngFor="let requirement of challenge?.requirements" class="d-flex">
-        <i class="bi bi-check2 text-greendark me-1"></i>
-        <p>{{ requirement }}</p>
+  <div class="row p-4 bg-add1">
+    <div class="col-6 mb-4">
+      <div class="flex-grow-1 bg-success-subtle p-3 rounded-3">
+        <h3 class="text-greendark mb-3 fs-4">Requirements</h3>
+        <div *ngFor="let requirement of challenge?.requirements" class="d-flex">
+          <i class="bi bi-check2 text-greendark me-1"></i>
+          <p>{{ requirement }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 mb-4">
+      <div class="flex-grow-1 bg-info-subtle p-3 rounded-3">
+        <h3 class="text-info-emphasis mb-3 fs-4">Benefits</h3>
+        <div *ngFor="let benefit of challenge?.benefits" class="d-flex">
+          <i class="bi bi-check2 text-info-emphasis me-1"></i>
+          <p>{{ benefit }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 mb-4">
+      <div class="flex-grow-1">
+        <h3 class="fs-4 mb-3">Challenge details</h3>
+        <div class="d-flex shadow-small-dollar rounded-3 mb-3 p-2">
+          <i class="bi bi-cash text-dollar me-1"></i>
+          <span>Budget: {{ challenge.budget }} €</span>
+        </div>
+        <div class="d-flex shadow-small-calendar-start rounded-3 mb-3 p-2">
+          <i class="bi bi-calendar4-week text-calendar-start me-1"></i>
+          <span>Start: {{ challenge.startDate | date : "dd/MM/yyyy" }}</span>
+        </div>
+        <div class="d-flex shadow-small-calendar-end rounded-3 mb-3 p-2">
+          <i class="bi bi-calendar4-week text-calendar-end me-1"></i>
+          <span>End: {{ challenge.endDate | date : "dd/MM/yyyy" }}</span>
+        </div>
+        <div class="d-flex shadow-small-participants rounded-3 p-2">
+          <i class="bi bi-people me-1 text-participants"></i>
+          <span>{{ challenge.numberOfParticipans }} participants</span>
+        </div>
+      </div>
+    </div>
+    <div class="col-6 mb-4">
+      <div class="flex-grow-1">
+        <h3 class="fs-4 mb-3">ODS Categories</h3>
+        <div class="d-flex flex-wrap gap-1">
+          <p *ngFor="let ods of challenge?.odsList" class="bg-primary text-add1 px-3 py-1 rounded-5 m-0">
+            <img [src]="ods.image" class="rounded-circle" [alt]="ods.name" width="35px" height="35px" />
+            {{ ods.name }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6 pb-sm-3" *ngIf="isStartup && challenge.endDate >= today">
+      <h3 class="fs-4 mb-2">How to Join?</h3>
+      <a [routerLink]="['/challenges', challengeId, 'proposals', 'new']"
+        class="btn w-auto btn-primary text-add1 fw-semibold rounded-pill mt-3 px-3 fs-5">
+        Join the Challenge
+      </a>
+
+    </div>
+
+    <div class="col-md-6">
+      <h3 class="fs-4 mb-2">Contact</h3>
+      <div class="rounded-3">
+        <div>
+          <i class="bi bi-people text-grey me-1"></i>
+          <span>{{ challenge.company?.name }}</span>
+        </div>
+        <div>
+          <i class="bi bi-envelope text-grey me-1"></i>
+          <a href="mailto:{{ challenge.company?.email }}" class="text-decoration-none">{{ challenge.company?.email
+            }}</a>
+        </div>
+        <div>
+          <a [routerLink]="'/chat/new/'+challenge.company?.id" class="text-decoration-none">
+            <i class="bi bi-chat-left-text-fill text-primary lead"></i>
+            Start a conversation
+          </a>
+        </div>
       </div>
     </div>
   </div>
-  <div class="col-6 mb-4">
-    <div class="flex-grow-1 bg-info-subtle p-3 rounded-3">
-      <h3 class="text-info-emphasis mb-3 fs-4">Benefits</h3>
-      <div *ngFor="let benefit of challenge?.benefits" class="d-flex">
-        <i class="bi bi-check2 text-info-emphasis me-1"></i>
-        <p>{{ benefit }}</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 mb-4">
-    <div class="flex-grow-1">
-      <h3 class="fs-4 mb-3">Challenge details</h3>
-      <div class="d-flex shadow-small-dollar rounded-3 mb-3 p-2">
-        <i class="bi bi-cash text-dollar me-1"></i>
-        <span>Budget: {{ challenge.budget }} €</span>
-      </div>
-      <div class="d-flex shadow-small-calendar-start rounded-3 mb-3 p-2">
-        <i class="bi bi-calendar4-week text-calendar-start me-1"></i>
-        <span>Start: {{ challenge.startDate | date : "dd/MM/yyyy" }}</span>
-      </div>
-      <div class="d-flex shadow-small-calendar-end rounded-3 mb-3 p-2">
-        <i class="bi bi-calendar4-week text-calendar-end me-1"></i>
-        <span>End: {{ challenge.endDate | date : "dd/MM/yyyy" }}</span>
-      </div>
-      <div class="d-flex shadow-small-participants rounded-3 p-2">
-        <i class="bi bi-people me-1 text-participants"></i>
-        <span>{{ challenge.numberOfParticipans }} participants</span>
-      </div>
-    </div>
-  </div>
-  <div class="col-6 mb-4">
-    <div class="flex-grow-1">
-      <h3 class="fs-4 mb-3">ODS Categories</h3>
-      <div class="d-flex flex-wrap gap-1">
-        <p
-          *ngFor="let ods of challenge?.odsList"
-          class="bg-primary text-add1 px-3 py-1 rounded-5 m-0"
-        >
-          <img [src]="ods.image" class="rounded-circle" [alt]="ods.name" width="35px" height="35px"/>
-          {{ ods.name }}
-        </p>
-      </div>
-    </div>
-  </div>
 
-  <div class="col-md-6 pb-sm-3" *ngIf="isStartup && challenge.endDate >= today">
-    <h3 class="fs-4 mb-2">How to Join?</h3>
-    <a [routerLink]="['/challenges', challengeId, 'proposals', 'new']"
-       class="btn w-auto btn-primary text-add1 fw-semibold rounded-pill mt-3 px-3 fs-5">
-      Join the Challenge
-    </a>
-
-  </div>
-
-  <div class="col-md-6">
-    <h3 class="fs-4 mb-2">Contact</h3>
-    <div class="rounded-3">
-      <div>
-        <i class="bi bi-people text-grey me-1"></i>
-        <span>{{ challenge.company?.name }}</span>
-      </div>
-      <div>
-        <i class="bi bi-envelope text-grey me-1"></i>
-        <a
-          href="mailto:{{ challenge.company?.email }}"
-          class="text-decoration-none"
-          >{{ challenge.company?.email }}</a
-        >
-      </div>
-    </div>
-  </div>
-</div>
-
-<shared-footer class="bg-light text-center mt-auto"></shared-footer>
+  <shared-footer class="bg-light text-center mt-auto"></shared-footer>
 </div>

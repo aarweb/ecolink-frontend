@@ -23,9 +23,8 @@ export class ChatService {
     return this.http.get<User>(this.baseUrl + '/new/' + id, { withCredentials: true });
   }
 
-  // Subir chat
-  create(id: number, message: string): Observable<Successfull> {
-    return this.http.post<Successfull>(this.baseUrl + '/new/' + id, {
+  create(id: number, message: string): Observable<ChatUser> {
+    return this.http.post<ChatUser>(this.baseUrl + '/new/' + id, {
       message
     }, { withCredentials: true });
   }

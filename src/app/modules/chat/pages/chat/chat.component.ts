@@ -22,6 +22,8 @@ export class ChatComponent implements OnInit {
   receiver: string = 'user';
   user: any;
   loading: boolean = false;
+  isNew = false;
+  maxCharacters = 255;
 
   constructor(
     private authService: AuthService,
@@ -33,57 +35,72 @@ export class ChatComponent implements OnInit {
 
   ngOnInit(): void {
     this.loading = true;
+
     this.route.params.subscribe(params => {
       this.id = params['id'];
-    });
+      this.isNew = this.route.snapshot.url[0]?.path === 'new';
 
-    this.webSocketService.initConnectionSocket();
+      this.webSocketService.initConnectionSocket().then(() => {
+        this.joinChats().then(() => {
+          if (this.id && this.isNew) {
+            this.chatService.getNewUser(this.id).subscribe((user: User) => {
+              const newChat: ChatUser = {
+                id: -1,
+                name: user.name,
+                imageUrl: user.imageUrl,
+                lastMessage: ''
+              };
+              this.authService.getImage('user', user.imageUrl).subscribe((imageUrl: string) => {
+                newChat.imageUrl = imageUrl;
+              });
+              this.chats.push(newChat);
+              this.onSelectChat(-1);
+            }, error => {
+              this.router.navigate(['/chat']);
+            });
+          } else if (this.id && !this.isNew) {
+            this.onSelectChat(this.id);
+          }
 
-    this.authService.getCurrentUser().subscribe((user: any) => {
-      this.user = user;
-      if (user?.imageUrl) {
-        this.authService.getImage('user', user.imageUrl).subscribe((imageUrl: string) => {
-          this.user.imageUrl = imageUrl;
+          this.loading = false;
+        }).catch(error => {
+          console.error('Error al unir los chats:', error);
+          this.loading = false;
         });
-      }
+      });
+
+      // Obtención de información del usuario actual
+      this.authService.getCurrentUser().subscribe((user: any) => {
+        this.user = user;
+        if (user?.imageUrl) {
+          this.authService.getImage('user', user.imageUrl).subscribe((imageUrl: string) => {
+            this.user.imageUrl = imageUrl;
+          });
+        }
+      });
     });
+  }
 
-    this.chatService.getChats().subscribe((chatList: ChatUser[]) => {
-      this.chats = chatList;
-
-      this.chats.forEach(chat => {
-        if (chat?.imageUrl) {
+  joinChats(): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.chatService.getChats().subscribe((chatList: ChatUser[]) => {
+        this.chats = chatList;
+        const joinPromises = this.chats.map(chat => {
           this.authService.getImage('user', chat.imageUrl).subscribe((imageUrl: string) => {
             chat.imageUrl = imageUrl;
           });
-        }
+          return this.webSocketService.joinChat(chat);
+        });
 
-        setTimeout(() => {
-          this.webSocketService.joinChat(chat);
-        }, 100);
+        Promise.all(joinPromises)
+          .then(() => {
+            resolve();
+          })
+          .catch(error => {
+            reject(error);
+          });
       });
     });
-
-    if (this.id) {
-      this.chatService.getNewUser(this.id).subscribe((user: User) => {
-        const newChat: ChatUser = {
-          id: -1,
-          name: user.name,
-          imageUrl: user.imageUrl,
-          lastMessage: ''
-        };
-        this.authService.getImage('user', user.imageUrl).subscribe((imageUrl: string) => {
-          newChat.imageUrl = imageUrl;
-        });
-        this.chats.push(newChat);
-        this.onSelectChat(-1);
-      },
-        error => {
-          this.router.navigate(['/chat']);
-        }
-      );
-    }
-    this.loading = false;
   }
 
   onSelectChat(id: number) {
@@ -91,19 +108,26 @@ export class ChatComponent implements OnInit {
       return;
     }
 
-    this.chatSelected = this.chats.find(chat => chat.id === id) || null;
+    this.chatSelected = this.chats.find(chat => chat.id == id) || null;
     this.receiver = this.chatSelected?.name || 'user';
     if (this.chatSelected) {
       this.messages = [];
       if (this.chatSelected.id != -1) {
-        this.messages = this.webSocketService.getMessages(id);
+        this.webSocketService.joinChat(this.chatSelected).then(() => {
+          this.messages = this.webSocketService.getMessages(id);
+        });
       }
+      const newUrl = `/chat/${id}`;
+      window.history.pushState({}, '', newUrl);
     }
   }
 
   sendMessage() {
     if (this.chatSelected && this.messageContent) {
       if (this.chatSelected.id >= 0) {
+        if(this.messageContent.length > 255){
+          return;
+        }
         this.webSocketService.sendMessage(this.chatSelected.id, this.messageContent, this.user.id);
         this.messageContent = '';
         setTimeout(() => {
@@ -119,8 +143,8 @@ export class ChatComponent implements OnInit {
           }
         }, 100);
       } else {
-        this.chatService.create(this.id, this.messageContent).subscribe((message: Successfull) => {
-          this.router.navigate(['/chat/']);
+        this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
+          this.router.navigate(['/chat/' + chat.id]);
         });
       }
     }

@@ -44,10 +44,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex p-3">
-                        <input type="text" class="form-control me-2" [(ngModel)]="messageContent" rows="1"
-                            placeholder="Escribe tu mensaje..." (keypress)="handleKeyPress($event)" />
-                        <button class="btn btn-primary" (click)="sendMessage()">Enviar</button>
+                    <div class="d-flex flex-column p-3">
+                        <div class="d-flex">
+                            <input type="text" class="form-control me-2" [(ngModel)]="messageContent" rows="1"
+                                placeholder="Escribe tu mensaje..." (keypress)="handleKeyPress($event)" [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}" />
+                            <button class="btn btn-primary" (click)="sendMessage()">Enviar</button>
+                        </div>
+                        <p [ngClass]="{'text-danger': maxCharacters - messageContent.length < 0}">{{maxCharacters - messageContent.length}} characters remaining
+                        </p>
                     </div>
                 </div>
             </div>
