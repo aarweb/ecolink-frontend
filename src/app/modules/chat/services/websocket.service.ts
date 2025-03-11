@@ -4,6 +4,7 @@ import SockJS from 'sockjs-client';
 import { ChatUser } from '../models/ChatUser';
 import { ChatService } from './chat.service';
 import { Message } from '../models/Message';
+import { Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +16,9 @@ export class WebSocketService {
   private chatMessages: { [chatId: number]: any[] } = {};
   private subscribedChats: Set<number> = new Set();
   private subscriptions: Map<number, any> = new Map();
+
+  private eventSubject = new Subject<any>();
+
 
   constructor(private chatService: ChatService) { }
 
@@ -81,14 +85,14 @@ export class WebSocketService {
         if (!this.chatMessages[chat_id]) {
           this.chatMessages[chat_id] = [];
         }
-
-        const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
-        if (messageExists) {
-        } else {
-          this.chatMessages[chat_id].push({ content, sender, timestamp });
-          chat.lastMessage = content;
-        }
         
+        const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
+        if (!messageExists) {
+          this.chatMessages[chat_id].push({ content, sender, timestamp, id });
+        } else {
+          messageExists.read = true;
+        }
+        this.notifyNewMessage(id);
       });
 
       this.subscribedChats.add(chat_id);
@@ -149,10 +153,22 @@ export class WebSocketService {
     return this.chatMessages[chat_id] || [];
   }
 
+  notifyNewMessage(id: number) {
+    this.eventSubject.next(id);
+  }
+
+  getEventSubject() {
+    return this.eventSubject.asObservable();
+  }
+
+
   readMessage(id: number, chat_id: number, sender: number) {
-    if (!this.chatMessages[chat_id]) return;
+    if (!this.chatMessages[chat_id]) {
+      return;
+    };
+
     const message = this.chatMessages[chat_id].find((message: Message) => message.id === id);
-    console.log(message);
+
     if (message && !message.read) {
       this.stompClient.send(
         `/app/chat/${chat_id}/read`,
@@ -161,7 +177,7 @@ export class WebSocketService {
         },
         JSON.stringify(message)
       );
-
+      message.read = true;
     }
   }
 }

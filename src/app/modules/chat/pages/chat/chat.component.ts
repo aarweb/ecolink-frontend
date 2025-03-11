@@ -2,11 +2,9 @@ import { AfterViewChecked, AfterViewInit, Component, ElementRef, Inject, OnInit,
 import { AuthService } from '../../../../auth/services/AuthService.service';
 import { ChatService } from '../../services/chat.service';
 import { ChatUser } from '../../models/ChatUser';
-import { IMessage } from '@stomp/stompjs';
 import { WebSocketService } from '../../services/websocket.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { User } from '../../../../core/models/User';
-import { Successfull } from '../../../blog/models/Successfull';
 import { Message } from '../../models/Message';
 
 @Component({
@@ -106,7 +104,6 @@ export class ChatComponent implements OnInit, AfterViewChecked  {
 
           this.loading = false;
         }).catch(error => {
-          console.error('Error al unir los chats:', error);
           this.loading = false;
         });
       });
@@ -130,7 +127,13 @@ export class ChatComponent implements OnInit, AfterViewChecked  {
           this.authService.getImage('user', chat.imageUrl).subscribe((imageUrl: string) => {
             chat.imageUrl = imageUrl;
           });
-          return this.webSocketService.joinChat(chat);
+          return this.webSocketService.joinChat(chat).then(() => {
+            this.webSocketService.getEventSubject().subscribe((id: number)=> {
+              setTimeout(() => {
+              this.initializeObserver();
+              }, 300);
+            })
+          });
         });
 
         Promise.all(joinPromises)
