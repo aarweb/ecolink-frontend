@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, Inject, OnInit, Output, ViewChild } from '@angular/core';
+import { AfterViewChecked, AfterViewInit, Component, ElementRef, Inject, OnInit, Output, QueryList, ViewChild, ViewChildren } from '@angular/core';
 import { AuthService } from '../../../../auth/services/AuthService.service';
 import { ChatService } from '../../services/chat.service';
 import { ChatUser } from '../../models/ChatUser';
@@ -7,16 +7,23 @@ import { WebSocketService } from '../../services/websocket.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { User } from '../../../../core/models/User';
 import { Successfull } from '../../../blog/models/Successfull';
+import { Message } from '../../models/Message';
 
 @Component({
   selector: 'app-chat',
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss']
 })
-export class ChatComponent implements OnInit {
+export class ChatComponent implements OnInit, AfterViewChecked  {
+  @ViewChildren('observedElement') observedElements!: QueryList<ElementRef>;
+  private observer!: IntersectionObserver;
+  hasObserved = false;
+  private previousElements: ElementRef[] = [];
+
+
   id: number = 0;
   chats: ChatUser[] = [];
-  messages: any[] = [];
+  messages: Message[] = [];
   messageContent: string = '';
   chatSelected: ChatUser | null = null;
   receiver: string = 'user';
@@ -32,6 +39,41 @@ export class ChatComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router
   ) { }
+
+  ngAfterViewChecked(): void {
+    if (this.observedElements.length > 0 && this.hasNewElements()) {
+      this.initializeObserver();
+    }
+  }
+
+  private initializeObserver(): void {
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+
+    this.observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          const element = entry.target as HTMLElement;
+          const id = element.getAttribute('id');
+          const message = this.messages.find(m => m.timestamp === id);
+          if (message && this.chatSelected && !message.read) {
+            this.webSocketService.readMessage(message.id, this.chatSelected.id, this.user.id);
+          }
+        }
+      });
+    });
+
+    this.observedElements.forEach((element) => {
+      this.observer.observe(element.nativeElement);
+    });
+
+    this.previousElements = this.observedElements.toArray();
+  }
+
+  private hasNewElements(): boolean {
+    return this.previousElements.length !== this.observedElements.length;
+  }
 
   ngOnInit(): void {
     this.loading = true;
@@ -69,7 +111,6 @@ export class ChatComponent implements OnInit {
         });
       });
 
-      // Obtención de información del usuario actual
       this.authService.getCurrentUser().subscribe((user: any) => {
         this.user = user;
         if (user?.imageUrl) {
@@ -125,7 +166,7 @@ export class ChatComponent implements OnInit {
   sendMessage() {
     if (this.chatSelected && this.messageContent) {
       if (this.chatSelected.id >= 0) {
-        if(this.messageContent.length > 255){
+        if (this.messageContent.length > 255) {
           return;
         }
         this.webSocketService.sendMessage(this.chatSelected.id, this.messageContent, this.user.id);

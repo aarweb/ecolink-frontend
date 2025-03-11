@@ -30,17 +30,28 @@
                         <h3 class="h5 m-0">{{ chatSelected?.name }}</h3>
                     </div>
 
-                    <div class="flex-grow-1 overflow-auto p-3 d-flex flex-column" style="height: 60vh;">
+                    <div #messageContainer class="flex-grow-1 overflow-auto p-3 d-flex flex-column" style="height: 60vh;">
                         <div *ngFor="let message of messages" class="d-flex mb-2" [ngClass]="{ 
                                 'justify-content-end': message.sender == user.id, 
                                 'justify-content-start': message.sender != user.id 
-                            }" [id]="message.timestamp">
+                            }">
 
-                            <div class="card py-2 px-3 shadow-sm"
+                            <div *ngIf="message.sender == user.id" class="card py-2 px-3 shadow-sm"
                                 [ngClass]="{ 'bg-primary text-white': message.sender == user.id, 'bg-light': message.sender != user.id }"
-                                style="max-width: 70%;">
+                                style="max-width: 70%;" [id]="message.timestamp">
                                 <p class="m-0">{{ message.content }}</p>
-                                <small class="text-end">{{message.timestamp | date:'HH:mm'}}</small>
+                                <small class="text-end">
+                                    <i *ngIf="message.read" class="bi bi-eye-fill"></i>
+                                    <i *ngIf="!message.read" class="bi bi-eye-slash-fill"></i>
+                                    {{message.timestamp | date:'HH:mm'}}</small>
+                            </div>
+                            <div #observedElement *ngIf="message.sender != user.id" class="card py-2 px-3 shadow-sm"
+                                [ngClass]="{ 'bg-primary text-white': message.sender == user.id, 'bg-light': message.sender != user.id }"
+                                style="max-width: 70%;" [id]="message.timestamp">
+                                <p class="m-0">{{ message.content }}</p>
+                                <small class="text-end">
+                                    {{message.timestamp | date:'HH:mm'}}
+                                </small>
                             </div>
                         </div>
                     </div>

@@ -3,6 +3,7 @@ import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { ChatUser } from '../models/ChatUser';
 import { ChatService } from './chat.service';
+import { Message } from '../models/Message';
 
 @Injectable({
   providedIn: 'root'
@@ -75,28 +76,33 @@ export class WebSocketService {
 
       const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
         const parsedMessage = JSON.parse(message.body);
-        const { content, sender, timestamp } = parsedMessage;
+        const { content, sender, timestamp, id } = parsedMessage;
 
         if (!this.chatMessages[chat_id]) {
           this.chatMessages[chat_id] = [];
         }
 
-        this.chatMessages[chat_id].push({ content, sender, timestamp });
-        chat.lastMessage = content;
+        const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
+        if (messageExists) {
+        } else {
+          this.chatMessages[chat_id].push({ content, sender, timestamp });
+          chat.lastMessage = content;
+        }
+        
       });
 
       this.subscribedChats.add(chat_id);
       this.subscriptions.set(chat_id, subscription);
 
       this.chatService.getMessages(chat_id).subscribe(
-        (messages: any[]) => {
+        (messages: Message[]) => {
           this.chatMessages[chat_id] = messages;
           chat.lastMessage = messages[messages.length - 1]?.content || '';
           resolve();
         },
         error => {
-            console.error('Error fetching messages:', error);
-            reject(error);
+          console.error('Error fetching messages:', error);
+          reject(error);
         }
       );
     });
@@ -139,7 +145,23 @@ export class WebSocketService {
     }
   }
 
-  getMessages(chat_id: number): any[] {
+  getMessages(chat_id: number): Message[] {
     return this.chatMessages[chat_id] || [];
+  }
+
+  readMessage(id: number, chat_id: number, sender: number) {
+    if (!this.chatMessages[chat_id]) return;
+    const message = this.chatMessages[chat_id].find((message: Message) => message.id === id);
+    console.log(message);
+    if (message && !message.read) {
+      this.stompClient.send(
+        `/app/chat/${chat_id}/read`,
+        {
+          Authorization: `Bearer ${this.jwt}`,
+        },
+        JSON.stringify(message)
+      );
+
+    }
   }
 }
