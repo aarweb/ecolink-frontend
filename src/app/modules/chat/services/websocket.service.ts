@@ -4,7 +4,7 @@ import SockJS from 'sockjs-client';
 import { ChatUser } from '../models/ChatUser';
 import { ChatService } from './chat.service';
 import { Message } from '../models/Message';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +17,7 @@ export class WebSocketService {
   private subscribedChats: Set<number> = new Set();
   private subscriptions: Map<number, any> = new Map();
 
-  private eventSubject = new Subject<any>();
+  private newMessageSubject = new Subject<any>();
 
 
   constructor(private chatService: ChatService) { }
@@ -85,14 +85,14 @@ export class WebSocketService {
         if (!this.chatMessages[chat_id]) {
           this.chatMessages[chat_id] = [];
         }
-        
+
         const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
         if (!messageExists) {
           this.chatMessages[chat_id].push({ content, sender, timestamp, id });
+          this.notifyNewMessage(content);
         } else {
           messageExists.read = true;
         }
-        this.notifyNewMessage(id);
       });
 
       this.subscribedChats.add(chat_id);
@@ -153,12 +153,35 @@ export class WebSocketService {
     return this.chatMessages[chat_id] || [];
   }
 
-  notifyNewMessage(id: number) {
-    this.eventSubject.next(id);
+  getNewChat(id: number): Observable<ChatUser> {
+    return new Observable((observer) => {
+      this.stompClient.subscribe(`/topic/chat/${id}/new`, (message: any) => {
+        const chat: ChatUser = JSON.parse(message.body);
+
+        if (chat == null) {
+          return;
+        }
+
+        observer.next(chat);
+      });
+    });
+  }
+
+  notifyNewChat(id: number) {
+    console.log('notifyNewChat: ' + id);
+    this.stompClient.send(
+      `/app/chat/${id}/new`,
+      {
+        Authorization: `Bearer ${this.jwt}`,
+      });
+  }
+
+  notifyNewMessage(content: string) {
+    this.newMessageSubject.next(content);
   }
 
   getEventSubject() {
-    return this.eventSubject.asObservable();
+    return this.newMessageSubject.asObservable();
   }
 
 

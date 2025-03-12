@@ -11,3 +11,9 @@
         /* Oculta la barra en Firefox */
     }
 }
+
+.btn-unread-message{
+    display: none;
+    position: absolute;
+    bottom: 0;
+}

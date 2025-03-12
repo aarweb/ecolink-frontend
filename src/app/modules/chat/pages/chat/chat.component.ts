@@ -12,7 +12,7 @@ import { Message } from '../../models/Message';
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss']
 })
-export class ChatComponent implements OnInit, AfterViewChecked  {
+export class ChatComponent implements OnInit, AfterViewChecked {
   @ViewChildren('observedElement') observedElements!: QueryList<ElementRef>;
   private observer!: IntersectionObserver;
   hasObserved = false;
@@ -29,6 +29,7 @@ export class ChatComponent implements OnInit, AfterViewChecked  {
   loading: boolean = false;
   isNew = false;
   maxCharacters = 255;
+  unreadMessages = false;
 
   constructor(
     private authService: AuthService,
@@ -102,6 +103,14 @@ export class ChatComponent implements OnInit, AfterViewChecked  {
             this.onSelectChat(this.id);
           }
 
+          this.webSocketService.getNewChat(this.user.id).subscribe((chat: ChatUser) => {
+            this.authService.getImage('user', chat.imageUrl).subscribe((imageUrl: string) => {
+              chat.imageUrl = imageUrl;
+              this.chats.push(chat);
+            }
+            );
+          });
+
           this.loading = false;
         }).catch(error => {
           this.loading = false;
@@ -128,9 +137,20 @@ export class ChatComponent implements OnInit, AfterViewChecked  {
             chat.imageUrl = imageUrl;
           });
           return this.webSocketService.joinChat(chat).then(() => {
-            this.webSocketService.getEventSubject().subscribe((id: number)=> {
+            this.webSocketService.getEventSubject().subscribe((content: string) => {
               setTimeout(() => {
-              this.initializeObserver();
+                if (this.chatSelected) {
+                  if (content != null && this.chatSelected?.lastMessage !== content) {
+                    const lastMessage = this.messages[this.messages.length - 1];
+                    if(lastMessage.sender != this.user.id) {
+                      this.chatSelected.lastMessage = content;
+                    } else {
+                      this.chatSelected.lastMessage = 'You: ' + content;
+                    }
+                  }
+                }
+                this.existsUnreadMessages()
+                this.initializeObserver();
               }, 300);
             })
           });
@@ -154,15 +174,15 @@ export class ChatComponent implements OnInit, AfterViewChecked  {
 
     this.chatSelected = this.chats.find(chat => chat.id == id) || null;
     this.receiver = this.chatSelected?.name || 'user';
-    if (this.chatSelected) {
+    if (this.chatSelected && this.chatSelected.id >= 0) {
       this.messages = [];
       if (this.chatSelected.id != -1) {
         this.webSocketService.joinChat(this.chatSelected).then(() => {
           this.messages = this.webSocketService.getMessages(id);
         });
+        const newUrl = `/chat/${id}`;
+        window.history.pushState({}, '', newUrl);
       }
-      const newUrl = `/chat/${id}`;
-      window.history.pushState({}, '', newUrl);
     }
   }
 
@@ -176,22 +196,38 @@ export class ChatComponent implements OnInit, AfterViewChecked  {
         this.messageContent = '';
         setTimeout(() => {
           const message = this.messages[this.messages.length - 1];
-          const messageElement = document.getElementById(message.timestamp);
-
-          if (messageElement) {
-            messageElement.scrollIntoView({
-              behavior: 'auto',
-              block: 'end',
-              inline: 'nearest'
-            });
-          }
+          this.goToMessage(message);
         }, 100);
       } else {
         this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
+          this.webSocketService.notifyNewChat(this.id);
           this.router.navigate(['/chat/' + chat.id]);
         });
       }
     }
+  }
+
+  goToMessage(message: Message) {
+    const messageElement = document.getElementById(message.timestamp);
+
+    if (messageElement) {
+      messageElement.scrollIntoView({
+        behavior: 'auto',
+        block: 'end',
+        inline: 'nearest'
+      });
+    }
+  }
+
+  goToFirstUnreadMessage() {
+    const firstUnreadMessage = this.messages.find(message => !message.read);
+    if (firstUnreadMessage) {
+      this.goToMessage(firstUnreadMessage);
+    }
+  }
+
+  existsUnreadMessages(): void {
+    this.unreadMessages = this.messages.some(message => !message.read);
   }
 
   handleKeyPress(event: KeyboardEvent) {

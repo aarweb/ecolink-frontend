@@ -30,7 +30,8 @@
                         <h3 class="h5 m-0">{{ chatSelected?.name }}</h3>
                     </div>
 
-                    <div #messageContainer class="flex-grow-1 overflow-auto p-3 d-flex flex-column" style="height: 60vh;">
+                    <div #messageContainer class="flex-grow-1 overflow-auto p-3 d-flex flex-column"
+                        style="height: 60vh;">
                         <div *ngFor="let message of messages" class="d-flex mb-2" [ngClass]="{ 
                                 'justify-content-end': message.sender == user.id, 
                                 'justify-content-start': message.sender != user.id 
@@ -54,14 +55,20 @@
                                 </small>
                             </div>
                         </div>
+                        <button class="btn btn-primary mt-3 btn-unread-message" (click)="goToFirstUnreadMessage()" 
+                        style="position: absolute; top: -40px; right: 10px;">
+                        <i class="bi bi-arrow-down-circle-fill"></i>
+                    </button>
                     </div>
                     <div class="d-flex flex-column p-3">
                         <div class="d-flex">
                             <input type="text" class="form-control me-2" [(ngModel)]="messageContent" rows="1"
-                                placeholder="Escribe tu mensaje..." (keypress)="handleKeyPress($event)" [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}" />
+                                placeholder="Escribe tu mensaje..." (keypress)="handleKeyPress($event)"
+                                [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}" />
                             <button class="btn btn-primary" (click)="sendMessage()">Enviar</button>
                         </div>
-                        <p [ngClass]="{'text-danger': maxCharacters - messageContent.length < 0}">{{maxCharacters - messageContent.length}} characters remaining
+                        <p [ngClass]="{'text-danger': maxCharacters - messageContent.length < 0}">{{maxCharacters -
+                            messageContent.length}} characters remaining
                         </p>
                     </div>
                 </div>

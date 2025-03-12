@@ -1,19 +1,23 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { ChatComponent } from './pages/chat/chat.component';
+import { ChatGuard } from '../../core/guards/chat.guard';
 
 const routes: Routes = [
   {
     path: '',
-    component: ChatComponent
+    component: ChatComponent,
+    canActivate: [ChatGuard]
   },
   {
     path: ':id',
-    component: ChatComponent
+    component: ChatComponent,
+    canActivate: [ChatGuard]
   },
   {
     path: 'new/:id',
-    component: ChatComponent
+    component: ChatComponent,
+    canActivate: [ChatGuard]
   }
 ];
 
