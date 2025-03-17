@@ -32,4 +32,8 @@ export class ChatService {
   getMessages(id: number): Observable<Message[]> {
     return this.http.get<Message[]>(this.baseUrl + '/messages/' + id, { withCredentials: true });
   }
+
+  submitImage(id_chat: number, image: FormData): Observable<Successfull> {
+    return this.http.post<Successfull>(this.baseUrl + "/" + id_chat + '/image', image, { withCredentials: true });
+  }
 }

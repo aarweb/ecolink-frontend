@@ -6,6 +6,9 @@ import { WebSocketService } from '../../services/websocket.service';
 import { ActivatedRoute, Router } from '@angular/router';
 import { User } from '../../../../core/models/User';
 import { Message } from '../../models/Message';
+import { Successfull } from '../../../blog/models/Successfull';
+import { MessageType } from '../../models/TypeMessage.enum';
+
 
 @Component({
   selector: 'app-chat',
@@ -23,6 +26,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   chats: ChatUser[] = [];
   messages: Message[] = [];
   messageContent: string = '';
+  imageContent: File | null = null
   chatSelected: ChatUser | null = null;
   receiver: string = 'user';
   user: any;
@@ -30,6 +34,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   isNew = false;
   maxCharacters = 255;
   unreadMessages = false;
+  isSubmittingImage = false;
 
   constructor(
     private authService: AuthService,
@@ -142,11 +147,16 @@ export class ChatComponent implements OnInit, AfterViewChecked {
                 if (this.chatSelected) {
                   if (content != null && this.chatSelected?.lastMessage !== content) {
                     const lastMessage = this.messages[this.messages.length - 1];
-                    if(lastMessage.sender != this.user.id) {
-                      this.chatSelected.lastMessage = content;
-                    } else {
-                      this.chatSelected.lastMessage = 'You: ' + content;
+                    let newMessage = "";
+                    if (lastMessage.sender == this.user.id) {
+                      newMessage = 'You: ';
                     }
+                    if(lastMessage.type == MessageType.IMAGE){
+                      newMessage += 'Image';
+                    } else {
+                      newMessage += content;
+                    }
+                    this.chatSelected.lastMessage = newMessage;
                   }
                 }
                 this.existsUnreadMessages()
@@ -174,6 +184,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
     this.chatSelected = this.chats.find(chat => chat.id == id) || null;
     this.receiver = this.chatSelected?.name || 'user';
+
     if (this.chatSelected && this.chatSelected.id >= 0) {
       this.messages = [];
       if (this.chatSelected.id != -1) {
@@ -186,25 +197,37 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     }
   }
 
-  sendMessage() {
-    if (this.chatSelected && this.messageContent) {
-      if (this.chatSelected.id >= 0) {
-        if (this.messageContent.length > 255) {
-          return;
-        }
-        this.webSocketService.sendMessage(this.chatSelected.id, this.messageContent, this.user.id);
-        this.messageContent = '';
-        setTimeout(() => {
-          const message = this.messages[this.messages.length - 1];
-          this.goToMessage(message);
-        }, 100);
-      } else {
-        this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
-          this.webSocketService.notifyNewChat(this.id);
-          this.router.navigate(['/chat/' + chat.id]);
-        });
-      }
+  sendMessage(type: MessageType = MessageType.TEXT) {
+
+    if (!this.chatSelected) {
+      return;
     }
+
+    if (!this.messageContent || this.messageContent.trim() === '' || this.messageContent.length > 255) {
+      return;
+    }
+
+    if (this.chatSelected.id >= 0) {
+      this.sendExistingChatMessage(this.chatSelected, type);
+    } else {
+      this.sendNewChatMessage();
+    }
+  }
+
+  sendExistingChatMessage(chat: ChatUser, type: MessageType = MessageType.TEXT) {
+    this.webSocketService.sendMessage(chat.id, this.messageContent, this.user.id, type);
+    this.messageContent = '';
+    setTimeout(() => {
+      const message = this.messages[this.messages.length - 1];
+      this.goToMessage(message);
+    }, 100);
+  }
+
+  sendNewChatMessage() {
+    this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
+      this.webSocketService.notifyNewChat(this.id);
+      this.router.navigate(['/chat/' + chat.id]);
+    });
   }
 
   goToMessage(message: Message) {
@@ -235,5 +258,35 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       event.preventDefault();
       this.sendMessage();
     }
+  }
+
+  toggleImageSubmit() {
+    this.isSubmittingImage = !this.isSubmittingImage;
+  }
+
+  onFileChange(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.imageContent = input.files[0];
+    }
+  }
+
+  submitImage() {
+    if (!this.chatSelected || !this.chatSelected.id || !this.imageContent) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('image', this.imageContent, this.imageContent.name);
+
+    this.chatService.submitImage(this.chatSelected.id, formData).subscribe({
+      next: (res: Successfull) => {
+        this.imageContent = null;
+        this.isSubmittingImage = false;
+        this.messageContent = res.message;
+        this.sendMessage(MessageType.IMAGE);
+      },
+      error: (error) => console.error("Error al enviar imagen", error)
+    });
   }
 }

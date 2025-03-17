@@ -5,6 +5,8 @@ import { ChatUser } from '../models/ChatUser';
 import { ChatService } from './chat.service';
 import { Message } from '../models/Message';
 import { Observable, Subject } from 'rxjs';
+import { MessageType } from '../models/TypeMessage.enum';
+import { AuthService } from '../../../auth/services/AuthService.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +22,7 @@ export class WebSocketService {
   private newMessageSubject = new Subject<any>();
 
 
-  constructor(private chatService: ChatService) { }
+  constructor(private chatService: ChatService, private authService: AuthService) { }
 
   initConnectionSocket(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -80,15 +82,24 @@ export class WebSocketService {
 
       const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
         const parsedMessage = JSON.parse(message.body);
-        const { content, sender, timestamp, id } = parsedMessage;
+        const { content, sender, timestamp, id, type } = parsedMessage;
 
         if (!this.chatMessages[chat_id]) {
           this.chatMessages[chat_id] = [];
         }
 
         const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
+
         if (!messageExists) {
-          this.chatMessages[chat_id].push({ content, sender, timestamp, id });
+          if(type == MessageType.IMAGE){
+            this.authService.getImage('message', content).subscribe((imageUrl: string) => {
+              this.chatMessages[chat_id].push({ content: imageUrl, sender, timestamp, id, type });
+              this.notifyNewMessage(imageUrl);
+            }
+            );
+          } else {
+            this.chatMessages[chat_id].push({ content, sender, timestamp, id, type });
+          }
           this.notifyNewMessage(content);
         } else {
           messageExists.read = true;
@@ -100,6 +111,13 @@ export class WebSocketService {
 
       this.chatService.getMessages(chat_id).subscribe(
         (messages: Message[]) => {
+          const images = messages.filter((message: Message) => message.type == MessageType.IMAGE);
+          images.forEach((image: Message) => {
+            this.authService.getImage('message', image.content).subscribe((imageUrl: string) => {
+              image.content = imageUrl;
+            });
+          });
+          
           this.chatMessages[chat_id] = messages;
           chat.lastMessage = messages[messages.length - 1]?.content || '';
           resolve();
@@ -124,7 +142,7 @@ export class WebSocketService {
     }
   }
 
-  sendMessage(chat_id: number, message: string, sender: number) {
+  sendMessage(chat_id: number, message: string, sender: number, type: MessageType) {
     if (!this.connected) {
       return;
     }
@@ -142,7 +160,8 @@ export class WebSocketService {
           },
           JSON.stringify({
             sender: sender,
-            content: message
+            content: message,
+            type: type
           })
         );
       }
@@ -168,7 +187,6 @@ export class WebSocketService {
   }
 
   notifyNewChat(id: number) {
-    console.log('notifyNewChat: ' + id);
     this.stompClient.send(
       `/app/chat/${id}/new`,
       {

@@ -29,7 +29,6 @@
                             style="width: 50px; height: 50px;">
                         <h3 class="h5 m-0">{{ chatSelected?.name }}</h3>
                     </div>
-
                     <div #messageContainer class="flex-grow-1 overflow-auto p-3 d-flex flex-column"
                         style="height: 60vh;">
                         <div *ngFor="let message of messages" class="d-flex mb-2" [ngClass]="{ 
@@ -40,7 +39,9 @@
                             <div *ngIf="message.sender == user.id" class="card py-2 px-3 shadow-sm"
                                 [ngClass]="{ 'bg-primary text-white': message.sender == user.id, 'bg-light': message.sender != user.id }"
                                 style="max-width: 70%;" [id]="message.timestamp">
-                                <p class="m-0">{{ message.content }}</p>
+                                <p class="m-0" *ngIf="message.type !== 'IMAGE'">{{ message.content }}</p>
+                                <img class="m-0" *ngIf="message.type === 'IMAGE'" [src]="message.content"
+                                    style="max-width: 100%; max-height: 200px;">
                                 <small class="text-end">
                                     <i *ngIf="message.read" class="bi bi-eye-fill"></i>
                                     <i *ngIf="!message.read" class="bi bi-eye-slash-fill"></i>
@@ -49,23 +50,38 @@
                             <div #observedElement *ngIf="message.sender != user.id" class="card py-2 px-3 shadow-sm"
                                 [ngClass]="{ 'bg-primary text-white': message.sender == user.id, 'bg-light': message.sender != user.id }"
                                 style="max-width: 70%;" [id]="message.timestamp">
-                                <p class="m-0">{{ message.content }}</p>
+                                <p class="m-0" *ngIf="message.type !== 'IMAGE'">{{ message.content }}</p>
+                                <img class="m-0" *ngIf="message.type === 'IMAGE'" [src]="message.content"
+                                    style="max-width: 100%; max-height: 200px;">
                                 <small class="text-end">
                                     {{message.timestamp | date:'HH:mm'}}
                                 </small>
                             </div>
                         </div>
-                        <button class="btn btn-primary mt-3 btn-unread-message" (click)="goToFirstUnreadMessage()" 
-                        style="position: absolute; top: -40px; right: 10px;">
-                        <i class="bi bi-arrow-down-circle-fill"></i>
-                    </button>
+                        <button class="btn btn-primary mt-3 btn-unread-message" (click)="goToFirstUnreadMessage()"
+                            style="position: absolute; top: -40px; right: 10px;">
+                            <i class="bi bi-arrow-down-circle-fill"></i>
+                        </button>
                     </div>
                     <div class="d-flex flex-column p-3">
                         <div class="d-flex">
-                            <input type="text" class="form-control me-2" [(ngModel)]="messageContent" rows="1"
-                                placeholder="Escribe tu mensaje..." (keypress)="handleKeyPress($event)"
+                            <input *ngIf="isSubmittingImage" class="form-control me-2" type="file" id="formFile"
+                                accept=".jpg, .jpeg, .png, .webp" (change)="onFileChange($event)">
+                            <input *ngIf="!isSubmittingImage" type="text" class="form-control me-2"
+                                [(ngModel)]="messageContent" rows="1" placeholder="Escribe tu mensaje..."
+                                (keypress)="handleKeyPress($event)"
                                 [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}" />
-                            <button class="btn btn-primary" (click)="sendMessage()">Enviar</button>
+                            <div class="d-flex gap-1">
+                                <button *ngIf="messageContent.length <= 0 && chatSelected?.id != null && chatSelected?.id != -1" class="btn btn-info rounded-circle"
+                                        (click)="toggleImageSubmit()">
+                                    <i *ngIf="!isSubmittingImage" class="bi bi-image"></i>
+                                    <i *ngIf="isSubmittingImage" class="bi bi-chat-left-text-fill"></i>
+                                </button>
+                                <button *ngIf="!isSubmittingImage" class="btn btn-primary"
+                                    (click)="sendMessage()">Send</button>
+                                <button *ngIf="isSubmittingImage" class="btn btn-primary"
+                                    (click)="submitImage()">Send</button>
+                            </div>
                         </div>
                         <p [ngClass]="{'text-danger': maxCharacters - messageContent.length < 0}">{{maxCharacters -
                             messageContent.length}} characters remaining
