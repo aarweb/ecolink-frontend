@@ -16,6 +16,7 @@ import { MessageType } from '../../models/TypeMessage.enum';
   styleUrls: ['./chat.component.scss']
 })
 export class ChatComponent implements OnInit, AfterViewChecked {
+  @ViewChild('messageContainer') private messageContainer!: ElementRef;
   @ViewChildren('observedElement') observedElements!: QueryList<ElementRef>;
   private observer!: IntersectionObserver;
   hasObserved = false;
@@ -44,10 +45,22 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     private router: Router
   ) { }
 
+  ngOnDestroy(): void {
+    // Limpiar suscripciones
+    if (this.observer) {
+      this.observer.disconnect();
+    }
+    
+    if (this.messageSubscription) {
+      this.messageSubscription.unsubscribe();
+    }
+  }
+
   ngAfterViewChecked(): void {
     if (this.observedElements.length > 0 && this.hasNewElements()) {
       this.initializeObserver();
     }
+    this.scrollToBottom();
   }
 
   private initializeObserver(): void {
@@ -77,6 +90,28 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
   private hasNewElements(): boolean {
     return this.previousElements.length !== this.observedElements.length;
+  }
+
+  getLastUserMessage(): Message | null {
+    if (!this.messages?.length || !this.user?.id) return null;
+    
+    // Find the last message sent by the current user
+    const userMessages = this.messages.filter(msg => msg.sender === this.user.id);
+    return userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
+  }
+
+  private scrollToBottom(): void {
+    try {
+      if (this.messageContainer) {
+        this.messageContainer.nativeElement.scrollTop = this.messageContainer.nativeElement.scrollHeight;
+      }
+    } catch(err) { 
+      console.error('Error al hacer scroll:', err);
+    }
+  }
+
+  onScroll(event: Event): void {
+    // Podemos agregar lógica de carga de mensajes antiguos aquí si es necesario
   }
 
   ngOnInit(): void {
@@ -144,6 +179,40 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     });
   }
 
+  private messageSubscription: any;
+
+  private setupMessageSubscription() {
+    // Asegurarse de que solo hay una suscripción activa
+    if (this.messageSubscription) {
+      this.messageSubscription.unsubscribe();
+    }
+
+    // Suscribirse a nuevos mensajes para actualizar la interfaz de usuario
+    this.messageSubscription = this.webSocketService.getEventSubject().subscribe((messageData: any) => {
+      if (messageData) {
+        setTimeout(() => {
+          const targetChat = this.chats.find(chat => chat.id === messageData.chatId);
+          if (targetChat) {
+            if (this.chatSelected?.id === messageData.chatId) {
+              const lastMessage = this.messages[this.messages.length - 1];
+              if (lastMessage) {
+                this.goToMessage(lastMessage);
+              }
+            }
+            
+            if (messageData.sender == this.user.id) {
+              targetChat.lastMessage = `You: ${messageData.content}`;
+            } else {
+              targetChat.lastMessage = messageData.content;
+            }
+          }
+          this.existsUnreadMessages();
+          this.initializeObserver();
+        }, 100);
+      }
+    });
+  }
+
   joinChats(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       this.chatService.getChats().subscribe((chatList: ChatUser[]) => {
@@ -153,29 +222,10 @@ export class ChatComponent implements OnInit, AfterViewChecked {
             chat.imageUrl = imageUrl;
           });
           await this.webSocketService.joinChat(chat);
-          this.webSocketService.getEventSubject().subscribe((content: string) => {
-            setTimeout(() => {
-              if (this.chatSelected) {
-                if (content != null && this.chatSelected?.lastMessage !== content) {
-                  const lastMessage = this.messages[this.messages.length - 1];
-                  this.goToMessage(lastMessage);
-                  let newMessage = "";
-                  if (lastMessage.sender == this.user.id) {
-                    newMessage = 'You: ';
-                  }
-                  if (lastMessage.type == MessageType.IMAGE) {
-                    newMessage += 'Image';
-                  } else {
-                    newMessage += content;
-                  }                  
-                  chat.lastMessage = newMessage;
-                }
-              }
-              this.existsUnreadMessages();
-              this.initializeObserver();
-            }, 300);
-          });
         });
+
+        // Configurar la suscripción a mensajes una sola vez
+        this.setupMessageSubscription();
 
         Promise.all(joinPromises)
           .then(() => {
@@ -201,7 +251,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       if (this.chatSelected.id != -1) {
         this.webSocketService.joinChat(this.chatSelected).then(() => {
           this.messages = this.webSocketService.getMessages(id);
-          let lastMessage = this.messages[this.messages.length - 1];
+          let lastMessage =  this.messages[this.messages.length - 1];
           setTimeout(() => {
             this.goToMessage(lastMessage);
           }, 100);

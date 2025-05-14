@@ -18,6 +18,8 @@ export class WebSocketService {
   private chatMessages: { [chatId: number]: any[] } = {};
   private subscribedChats: Set<number> = new Set();
   private subscriptions: Map<number, any> = new Map();
+  private chats: ChatUser[] = [];
+  private userId: number  | null = null;
 
   private newMessageSubject = new Subject<any>();
 
@@ -53,6 +55,12 @@ export class WebSocketService {
           reject(error);
         }
       );
+      // Obtener el ID del usuario actual
+      this.authService.getCurrentUser().subscribe((user: any) => {
+        this.userId = user?.id;
+      }, (error: any) => {
+        console.error('Error fetching current user:', error);
+      });
     });
   }
 
@@ -64,6 +72,10 @@ export class WebSocketService {
   }
 
   joinChat(chat: ChatUser): Promise<void> {
+    // Asegurarse de que el chat esté en la lista de chats
+    if (!this.chats.some(c => c.id === chat.id)) {
+      this.chats.push(chat);
+    }
     return new Promise<void>((resolve, reject) => {
       const chat_id = chat.id;
       if (!chat_id) {
@@ -91,16 +103,27 @@ export class WebSocketService {
         const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
 
         if (!messageExists) {
+          // Agregar el mensaje al historial
           if (type == MessageType.IMAGE) {
             this.authService.getImage('message', content).subscribe((imageUrl: string) => {
-              this.chatMessages[chat_id].push({ content: imageUrl, sender, timestamp, id, type });
-              this.notifyNewMessage(imageUrl);
-            }
-            );
+              const newMessage = { content: imageUrl, sender, timestamp, id, type };
+              this.chatMessages[chat_id].push(newMessage);
+
+              const chat = this.chats.find(c => c.id === chat_id);
+              if (chat) {
+                chat.lastMessage = 'Image';
+                this.notifyNewMessage({ content: 'Image', chatId: chat_id, sender });
+              }
+            });
           } else {
-            this.chatMessages[chat_id].push({ content, sender, timestamp, id, type });
+            const newMessage = { content, sender, timestamp, id, type };
+            this.chatMessages[chat_id].push(newMessage);
+
+            const chat = this.chats.find(c => c.id === chat_id);
+            if (chat) {
+              this.notifyNewMessage({ content, chatId: chat_id, sender });
+            }
           }
-          this.notifyNewMessage(content);
         } else {
           messageExists.read = true;
         }
@@ -117,10 +140,12 @@ export class WebSocketService {
               image.content = imageUrl;
             });
           });
-
           this.chatMessages[chat_id] = messages;
-          chat.lastMessage = messages[messages.length - 1]?.content || '';
-          resolve();
+            let lastMessageSender = messages[messages.length - 1]?.sender;
+            if (Number(lastMessageSender) === this.userId) {
+            chat.lastMessage = "You: " + messages[messages.length - 1]?.content || '';
+          }
+            resolve();
         },
         error => {
           console.error('Error fetching messages:', error);
@@ -194,8 +219,8 @@ export class WebSocketService {
       });
   }
 
-  notifyNewMessage(content: string) {
-    this.newMessageSubject.next(content);
+  notifyNewMessage(data: { content: string, chatId: number, sender: number }) {
+    this.newMessageSubject.next(data);
   }
 
   getEventSubject() {

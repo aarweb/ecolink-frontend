@@ -30,7 +30,7 @@
                         <h3 class="h5 m-0">{{ chatSelected?.name }}</h3>
                     </div>
                     <div #messageContainer class="flex-grow-1 overflow-auto p-3 d-flex flex-column"
-                        style="height: 60vh;">
+                        style="height: 60vh;" (scroll)="onScroll($event)">
                         <div *ngFor="let message of messages" class="d-flex mb-2" [ngClass]="{ 
                                 'justify-content-end': message.sender == user.id, 
                                 'justify-content-start': message.sender != user.id 

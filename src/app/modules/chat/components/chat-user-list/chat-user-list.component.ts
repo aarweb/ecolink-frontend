@@ -4,7 +4,7 @@ import { ChatUser } from '../../models/ChatUser';
 @Component({
   selector: 'chat-user-list',
   templateUrl: './chat-user-list.component.html',
-  styleUrl: './chat-user-list.component.scss'
+  styleUrls: ['./chat-user-list.component.scss']
 })
 export class ChatUserListComponent {
   @Input() chat!: ChatUser;
@@ -24,5 +24,4 @@ export class ChatUserListComponent {
   onSelectChat = () => {
     this.selectChat.emit(this.userId)
   }
-
 }
