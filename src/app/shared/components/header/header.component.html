@@ -17,13 +17,15 @@
         <img [src]="imageUrl" alt="Profile" class="rounded-circle" style="width:40px; height:40px;">
       </a>
       <!-- Menú hamburguesa -->
-      <button class="navbar-toggler text-light border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar">
+      <button class="navbar-toggler text-light border-0" type="button" data-bs-toggle="offcanvas"
+        data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar">
         <span class="navbar-toggler-icon"></span>
       </button>
     </div>
 
     <!-- Menú en offcanvas para móviles -->
-    <div class="offcanvas offcanvas-end bg-primary text-white" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+    <div class="offcanvas offcanvas-end bg-primary text-white" tabindex="-1" id="offcanvasNavbar"
+      aria-labelledby="offcanvasNavbarLabel">
       <div class="offcanvas-header">
         <h5 class="offcanvas-title" id="offcanvasNavbarLabel">
           {{ isLogged ? "Hello, "+userFullName : 'Menu' }}
@@ -88,6 +90,18 @@
               </span>
             </a>
           </li>
+          
+          <li class="nav-item mx-1 d-lg-none" *ngIf="isLogged">
+            <a *ngIf="isLogged" href="/chat" class="position-relative">
+              <i class="bi bi-chat-square-quote text-light fs-4"></i>
+              <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                {{counMessage}}
+              </span>
+            </a>
+          </li>
+          <!-- Separador -->
+          <hr class="text-light my-3">
+
           <!-- Opciones de perfil y logout debajo de las demás -->
           <li class="nav-item mx-1 d-lg-none" *ngIf="isLogged">
             <a class="nav-link fs-5 text-light" href="/profile">
@@ -120,6 +134,12 @@
         <i class="bi bi-cart3 text-light fs-4"></i>
         <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
           {{countCart}}
+        </span>
+      </a>
+      <a *ngIf="isLogged" href="/chat" class="me-4 position-relative">
+        <i class="bi bi-chat-square-quote text-light fs-4"></i>
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+          {{counMessage}}
         </span>
       </a>
       <a *ngIf="!isLogged" href="/auth/login" class="btn btn-outline-light me-2">Log In</a>

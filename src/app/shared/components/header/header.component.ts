@@ -3,6 +3,8 @@ import { AuthService } from '../../../auth/services/AuthService.service';
 import { User } from '../../../core/models/User';
 import { Router } from '@angular/router';
 import { CartCountService } from '../../../core/services/cart-count.service';
+import { ChatService } from '../../../modules/chat/services/chat.service';
+import { Message } from '../../../modules/chat/models/Message';
 
 @Component({
   selector: 'shared-header',
@@ -19,12 +21,14 @@ export class HeaderComponent implements OnInit {
   username: string | null = null;
   userFullName: string | null = null;
   countCart: number = 0;
+  counMessage: string = "0";
 
   constructor(
     private authService: AuthService,
     private router: Router,
-    private cartCountService: CartCountService
-  ) {}
+    private cartCountService: CartCountService,
+    private chatService: ChatService
+  ) { }
 
   ngOnInit(): void {
     this.authService.getCurrentUser().subscribe((user: User) => {
@@ -32,7 +36,7 @@ export class HeaderComponent implements OnInit {
       if (user) {
         this.username = user.username;
         this.userFullName = user.name;
-        
+
         if (user.userType.toUpperCase() === 'CLIENT') {
           this.isClient = true;
         } else if (user.userType.toUpperCase() === 'STARTUP') {
@@ -53,6 +57,12 @@ export class HeaderComponent implements OnInit {
       this.cartCountService.currentCount.subscribe((count: number) => {
         this.countCart = count;
       })
+
+      this.chatService.getUnreadMessages().subscribe((messages: Message[]) => {
+        const count = messages.length;
+        this.counMessage = count > 9 ? '9+' : count < 1 ? '0' : count.toString();
+        
+      });
     });
   }
 
@@ -60,7 +70,7 @@ export class HeaderComponent implements OnInit {
     this.authService.logout().subscribe(() => {
       this.isLogged = false;
       this.router.navigateByUrl('/auth/login', { skipLocationChange: true }).then(() => {
-        this.router.navigateByUrl('/').then(() => {});
+        this.router.navigateByUrl('/').then(() => { });
       });
     });
   }

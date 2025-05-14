@@ -91,7 +91,7 @@ export class WebSocketService {
         const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
 
         if (!messageExists) {
-          if(type == MessageType.IMAGE){
+          if (type == MessageType.IMAGE) {
             this.authService.getImage('message', content).subscribe((imageUrl: string) => {
               this.chatMessages[chat_id].push({ content: imageUrl, sender, timestamp, id, type });
               this.notifyNewMessage(imageUrl);
@@ -117,7 +117,7 @@ export class WebSocketService {
               image.content = imageUrl;
             });
           });
-          
+
           this.chatMessages[chat_id] = messages;
           chat.lastMessage = messages[messages.length - 1]?.content || '';
           resolve();

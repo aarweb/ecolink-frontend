@@ -19,7 +19,6 @@ export class ChatUserListComponent {
 
   ngOnInit() {
     this.userId = this.chat.id;
-
   }
 
   onSelectChat = () => {

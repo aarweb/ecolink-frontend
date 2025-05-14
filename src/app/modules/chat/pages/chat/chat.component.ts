@@ -88,6 +88,12 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
       this.webSocketService.initConnectionSocket().then(() => {
         this.joinChats().then(() => {
+          this.chats.forEach(chat => {
+            if (chat.lastMessage.endsWith('.png') || chat.lastMessage.endsWith('.jpg') || chat.lastMessage.endsWith('.jpeg') || chat.lastMessage.endsWith('.webp')) {
+              chat.lastMessage = 'Image';
+            } 
+          }
+          );
           if (this.id && this.isNew) {
             this.chatService.getNewUser(this.id).subscribe((user: User) => {
               const newChat: ChatUser = {
@@ -111,6 +117,11 @@ export class ChatComponent implements OnInit, AfterViewChecked {
           this.webSocketService.getNewChat(this.user.id).subscribe((chat: ChatUser) => {
             this.authService.getImage('user', chat.imageUrl).subscribe((imageUrl: string) => {
               chat.imageUrl = imageUrl;
+
+              if (chat.lastMessage.endsWith('.png') || chat.lastMessage.endsWith('.jpg') || chat.lastMessage.endsWith('.jpeg') || chat.lastMessage.endsWith('.webp')) {
+                chat.lastMessage = 'Image';
+              }
+
               this.chats.push(chat);
             }
             );
@@ -137,32 +148,32 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     return new Promise<void>((resolve, reject) => {
       this.chatService.getChats().subscribe((chatList: ChatUser[]) => {
         this.chats = chatList;
-        const joinPromises = this.chats.map(chat => {
+        const joinPromises = this.chats.map(async chat => {
           this.authService.getImage('user', chat.imageUrl).subscribe((imageUrl: string) => {
             chat.imageUrl = imageUrl;
           });
-          return this.webSocketService.joinChat(chat).then(() => {
-            this.webSocketService.getEventSubject().subscribe((content: string) => {
-              setTimeout(() => {
-                if (this.chatSelected) {
-                  if (content != null && this.chatSelected?.lastMessage !== content) {
-                    const lastMessage = this.messages[this.messages.length - 1];
-                    let newMessage = "";
-                    if (lastMessage.sender == this.user.id) {
-                      newMessage = 'You: ';
-                    }
-                    if(lastMessage.type == MessageType.IMAGE){
-                      newMessage += 'Image';
-                    } else {
-                      newMessage += content;
-                    }
-                    this.chatSelected.lastMessage = newMessage;
+          await this.webSocketService.joinChat(chat);
+          this.webSocketService.getEventSubject().subscribe((content: string) => {
+            setTimeout(() => {
+              if (this.chatSelected) {
+                if (content != null && this.chatSelected?.lastMessage !== content) {
+                  const lastMessage = this.messages[this.messages.length - 1];
+                  this.goToMessage(lastMessage);
+                  let newMessage = "";
+                  if (lastMessage.sender == this.user.id) {
+                    newMessage = 'You: ';
                   }
+                  if (lastMessage.type == MessageType.IMAGE) {
+                    newMessage += 'Image';
+                  } else {
+                    newMessage += content;
+                  }                  
+                  chat.lastMessage = newMessage;
                 }
-                this.existsUnreadMessages()
-                this.initializeObserver();
-              }, 300);
-            })
+              }
+              this.existsUnreadMessages();
+              this.initializeObserver();
+            }, 300);
           });
         });
 
@@ -190,6 +201,10 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       if (this.chatSelected.id != -1) {
         this.webSocketService.joinChat(this.chatSelected).then(() => {
           this.messages = this.webSocketService.getMessages(id);
+          let lastMessage = this.messages[this.messages.length - 1];
+          setTimeout(() => {
+            this.goToMessage(lastMessage);
+          }, 100);
         });
         const newUrl = `/chat/${id}`;
         window.history.pushState({}, '', newUrl);

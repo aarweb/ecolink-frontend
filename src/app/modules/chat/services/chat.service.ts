@@ -36,4 +36,8 @@ export class ChatService {
   submitImage(id_chat: number, image: FormData): Observable<Successfull> {
     return this.http.post<Successfull>(this.baseUrl + "/" + id_chat + '/image', image, { withCredentials: true });
   }
+
+  getUnreadMessages(): Observable<Message[]> {
+    return this.http.get<Message[]>(this.baseUrl + '/unread', { withCredentials: true });
+  }
 }
