@@ -75,7 +75,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     if (this.observedElements.length > 0 && this.hasNewElements()) {
       this.initializeObserver();
     }
-    this.scrollToBottom();
+    // Removed scrollToBottom() call to avoid running on every change
   }
 
   private initializeObserver(): void {
@@ -116,13 +116,11 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   }
 
   private scrollToBottom(): void {
-    try {
-      if (this.messageContainer) {
-        this.messageContainer.nativeElement.scrollTop = this.messageContainer.nativeElement.scrollHeight;
-      }
-    } catch(err) { 
-      console.error('Error al hacer scroll:', err);
-    }
+    if (!this.messageContainer) return;
+    const container = this.messageContainer.nativeElement;
+    setTimeout(() => { // Always scroll to the bottom
+      container.scrollTop = container.scrollHeight;
+    }, 0);
   }
 
   onScroll(event: Event): void {
@@ -197,29 +195,23 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   private messageSubscription: any;
 
   private setupMessageSubscription() {
-    // Asegurarse de que solo hay una suscripción activa
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
     }
-
-    // Suscribirse a nuevos mensajes para actualizar la interfaz de usuario
     this.messageSubscription = this.webSocketService.getEventSubject().subscribe((messageData: any) => {
       if (messageData) {
         setTimeout(() => {
           const targetChat = this.chats.find(chat => chat.id === messageData.chatId);
           if (targetChat) {
-            if (this.chatSelected?.id === messageData.chatId) {
-              const lastMessage = this.messages[this.messages.length - 1];
-              if (lastMessage) {
-                this.goToMessage(lastMessage);
-              }
-            }
-            
             if (messageData.sender == this.user.id) {
               targetChat.lastMessage = `You: ${messageData.content}`;
             } else {
               targetChat.lastMessage = messageData.content;
             }
+          }
+          // Execute scrollToBottom when a message is received
+          if (this.chatSelected) {
+            this.scrollToBottom();
           }
           this.existsUnreadMessages();
           this.initializeObserver();
