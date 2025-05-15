@@ -25,6 +25,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
   id: number = 0;
   chats: ChatUser[] = [];
+  private chatsSubscription: any;
   messages: Message[] = [];
   messageContent: string = '';
   imageContent: File | null = null
@@ -43,7 +44,17 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     private webSocketService: WebSocketService,
     private route: ActivatedRoute,
     private router: Router
-  ) { }
+  ) { 
+    // Suscribirse a los cambios en la lista de chats
+    this.chatsSubscription = this.webSocketService.chats$.subscribe(chats => {
+      // Ordenar los chats por fecha más reciente
+      this.chats = [...chats].sort((a, b) => {
+        if (!a.lastMessageDate) return 1;
+        if (!b.lastMessageDate) return -1;
+        return b.lastMessageDate.getTime() - a.lastMessageDate.getTime();
+      });
+    });
+  }
 
   ngOnDestroy(): void {
     // Limpiar suscripciones
@@ -53,6 +64,10 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
+    }
+    
+    if (this.chatsSubscription) {
+      this.chatsSubscription.unsubscribe();
     }
   }
 

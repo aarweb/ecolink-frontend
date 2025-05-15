@@ -22,6 +22,8 @@ export class WebSocketService {
   private userId: number  | null = null;
 
   private newMessageSubject = new Subject<any>();
+  private chatsUpdated = new Subject<ChatUser[]>();
+  chats$ = this.chatsUpdated.asObservable();
 
 
   constructor(private chatService: ChatService, private authService: AuthService) { }
@@ -96,6 +98,14 @@ export class WebSocketService {
         const parsedMessage = JSON.parse(message.body);
         const { content, sender, timestamp, id, type } = parsedMessage;
 
+        // Actualizar la fecha más reciente del chat
+        const chatIndex = this.chats.findIndex(c => c.id === chat_id);
+        if (chatIndex !== -1) {
+          this.chats[chatIndex].lastMessageDate = new Date(timestamp);
+          // Ordenar los chats por fecha más reciente
+          this.sortAndNotifyChats();
+        }
+
         if (!this.chatMessages[chat_id]) {
           this.chatMessages[chat_id] = [];
         }
@@ -121,6 +131,9 @@ export class WebSocketService {
 
             const chat = this.chats.find(c => c.id === chat_id);
             if (chat) {
+              chat.lastMessage = content;
+              chat.lastMessageDate = new Date(timestamp);
+              this.sortAndNotifyChats();
               this.notifyNewMessage({ content, chatId: chat_id, sender });
             }
           }
@@ -141,11 +154,19 @@ export class WebSocketService {
             });
           });
           this.chatMessages[chat_id] = messages;
-            let lastMessageSender = messages[messages.length - 1]?.sender;
-            if (Number(lastMessageSender) === this.userId) {
-            chat.lastMessage = "You: " + messages[messages.length - 1]?.content || '';
+          
+          // Actualizar la fecha del último mensaje
+          if (messages.length > 0) {
+            const lastMessage = messages[messages.length - 1];
+            const chat = this.chats.find(c => c.id === chat_id);
+            if (chat) {
+              chat.lastMessageDate = new Date(lastMessage.timestamp);
+              chat.lastMessage = lastMessage.type === MessageType.IMAGE ? 'Image' : lastMessage.content;
+              this.sortAndNotifyChats();
+            }
           }
-            resolve();
+          
+          resolve();
         },
         error => {
           console.error('Error fetching messages:', error);
@@ -219,8 +240,38 @@ export class WebSocketService {
       });
   }
 
-  notifyNewMessage(data: { content: string, chatId: number, sender: number }) {
-    this.newMessageSubject.next(data);
+  private sortAndNotifyChats() {
+    if (!this.chats || this.chats.length === 0) return;
+
+    // Asegurarse de que todos los chats tengan una fecha
+    this.chats.forEach(chat => {
+      if (!chat.lastMessageDate) {
+        // Si no hay fecha, usar la fecha actual como fallback
+        chat.lastMessageDate = new Date();
+      }
+    });
+
+    // Ordenar los chats
+    this.chats.sort((a, b) => {
+      if (!a.lastMessageDate || !b.lastMessageDate) return 0;
+      return b.lastMessageDate.getTime() - a.lastMessageDate.getTime();
+    });
+
+    // Emitir el nuevo orden
+    this.chatsUpdated.next([...this.chats]);
+  }
+
+  private notifyNewMessage(message: any) {
+    // Actualizar el último mensaje del chat
+    const chat = this.chats.find(c => c.id === message.chatId);
+    if (chat) {
+      chat.lastMessage = message.content;
+      chat.lastMessageDate = new Date();
+      this.sortAndNotifyChats();
+    }
+    
+    // Notificar a los suscriptores
+    this.newMessageSubject.next(message);
   }
 
   getEventSubject() {

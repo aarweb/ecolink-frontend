@@ -3,4 +3,5 @@ export interface ChatUser {
     name: string;
     imageUrl: string;
     lastMessage: string;
+    lastMessageDate?: Date;
 }
