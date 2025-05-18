@@ -4,4 +4,5 @@ export interface ChatUser {
     imageUrl: string;
     lastMessage: string;
     lastMessageDate?: Date;
+    unreadCount?: number;
 }

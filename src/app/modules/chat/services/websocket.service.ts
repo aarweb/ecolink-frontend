@@ -19,7 +19,7 @@ export class WebSocketService {
   private subscribedChats: Set<number> = new Set();
   private subscriptions: Map<number, any> = new Map();
   private chats: ChatUser[] = [];
-  private userId: number  | null = null;
+  private userId: number | null = null;
 
   private newMessageSubject = new Subject<any>();
   private chatsUpdated = new Subject<ChatUser[]>();
@@ -154,7 +154,13 @@ export class WebSocketService {
             });
           });
           this.chatMessages[chat_id] = messages;
-          
+
+          const unreadCount = messages.filter((msg: Message) => !msg.read && Number(msg.sender) !== Number(this.userId)).length;
+          const chat = this.chats.find(c => c.id === chat_id);
+          if (chat) {
+            chat.unreadCount = unreadCount;
+          }
+
           // Actualizar la fecha del último mensaje
           if (messages.length > 0) {
             const lastMessage = messages[messages.length - 1];
@@ -165,7 +171,7 @@ export class WebSocketService {
               this.sortAndNotifyChats();
             }
           }
-          
+
           resolve();
         },
         error => {
@@ -262,14 +268,17 @@ export class WebSocketService {
   }
 
   private notifyNewMessage(message: any) {
-    // Actualizar el último mensaje del chat
     const chat = this.chats.find(c => c.id === message.chatId);
     if (chat) {
+      if (message.sender != this.userId) {
+        console.log("Sender of the message: ", message.sender, "User ID: ", this.userId);
+        chat.unreadCount = (chat.unreadCount || 0) + 1;
+      }
       chat.lastMessage = message.content;
       chat.lastMessageDate = new Date();
       this.sortAndNotifyChats();
     }
-    
+
     // Notificar a los suscriptores
     this.newMessageSubject.next(message);
   }
@@ -295,6 +304,7 @@ export class WebSocketService {
         JSON.stringify(message)
       );
       message.read = true;
+      
     }
   }
 }
