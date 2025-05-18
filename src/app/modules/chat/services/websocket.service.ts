@@ -304,7 +304,15 @@ export class WebSocketService {
         JSON.stringify(message)
       );
       message.read = true;
-      
+
+      // Actualizar el contador de mensajes no leídos
+      const chat = this.chats.find(c => c.id === chat_id);
+      if (chat) {
+        chat.unreadCount = (chat.unreadCount || 0) - 1;
+        if (chat.unreadCount < 0) {
+          chat.unreadCount = 0;
+        }
+      }
     }
   }
 }
