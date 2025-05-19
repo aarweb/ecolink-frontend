@@ -44,7 +44,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     private webSocketService: WebSocketService,
     private route: ActivatedRoute,
     private router: Router
-  ) { 
+  ) {
     // Suscribirse a los cambios en la lista de chats
     this.chatsSubscription = this.webSocketService.chats$.subscribe(chats => {
       // Ordenar los chats por fecha más reciente
@@ -61,11 +61,11 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     if (this.observer) {
       this.observer.disconnect();
     }
-    
+
     if (this.messageSubscription) {
       this.messageSubscription.unsubscribe();
     }
-    
+
     if (this.chatsSubscription) {
       this.chatsSubscription.unsubscribe();
     }
@@ -109,7 +109,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
 
   getLastUserMessage(): Message | null {
     if (!this.messages?.length || !this.user?.id) return null;
-    
+
     // Find the last message sent by the current user
     const userMessages = this.messages.filter(msg => msg.sender === this.user.id);
     return userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
@@ -139,7 +139,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
           this.chats.forEach(chat => {
             if (chat.lastMessage.endsWith('.png') || chat.lastMessage.endsWith('.jpg') || chat.lastMessage.endsWith('.jpeg') || chat.lastMessage.endsWith('.webp')) {
               chat.lastMessage = 'Image';
-            } 
+            }
           }
           );
           if (this.id && this.isNew) {
@@ -166,13 +166,30 @@ export class ChatComponent implements OnInit, AfterViewChecked {
             this.authService.getImage('user', chat.imageUrl).subscribe((imageUrl: string) => {
               chat.imageUrl = imageUrl;
 
-              if (chat.lastMessage.endsWith('.png') || chat.lastMessage.endsWith('.jpg') || chat.lastMessage.endsWith('.jpeg') || chat.lastMessage.endsWith('.webp')) {
+              if (
+                chat.lastMessage.endsWith('.png') ||
+                chat.lastMessage.endsWith('.jpg') ||
+                chat.lastMessage.endsWith('.jpeg') ||
+                chat.lastMessage.endsWith('.webp')
+              ) {
                 chat.lastMessage = 'Image';
               }
-
               this.chats.push(chat);
-            }
-            );
+              console.log('Nuevo chat recibido:', chat);
+              const unreadCount = this.chats.filter(c => c.id === chat.id).length;
+              chat.unreadCount = unreadCount;
+              // Suscribirse a los mensajes para este chat
+              this.webSocketService.joinChat(chat).then(() => {
+                // SOLO ACTUALIZAR la vista si el chat activo es el mismo
+                if (this.chatSelected && this.chatSelected.id === chat.id) {
+                  this.messages = this.webSocketService.getMessages(chat.id);
+                  this.scrollToBottom();
+                  console.log('[chat.component] Chat activo actualizado con mensajes del chat:', chat.id);
+                } else {
+                  console.log('[chat.component] Mensajes cargados en background para chat:', chat.id);
+                }
+              });
+            });
           });
 
           this.loading = false;
@@ -258,7 +275,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       if (this.chatSelected.id != -1) {
         this.webSocketService.joinChat(this.chatSelected).then(() => {
           this.messages = this.webSocketService.getMessages(id);
-          let lastMessage =  this.messages[this.messages.length - 1];
+          let lastMessage = this.messages[this.messages.length - 1];
           setTimeout(() => {
             this.goToMessage(lastMessage);
           }, 100);

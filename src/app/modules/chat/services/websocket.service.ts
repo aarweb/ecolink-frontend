@@ -74,113 +74,122 @@ export class WebSocketService {
   }
 
   joinChat(chat: ChatUser): Promise<void> {
-    // Asegurarse de que el chat esté en la lista de chats
-    if (!this.chats.some(c => c.id === chat.id)) {
-      this.chats.push(chat);
+  // Agregar el chat a la lista si no existe
+  if (!this.chats.some(c => c.id === chat.id)) {
+    this.chats.push(chat);
+    console.log('[joinChat] Chat agregado a la lista:', chat);
+  }
+  return new Promise<void>((resolve, reject) => {
+    const chat_id = chat.id;
+    if (!chat_id) {
+      console.error('[joinChat] No se puede unir a un chat sin ID');
+      return reject('Cannot join a chat without ID');
     }
-    return new Promise<void>((resolve, reject) => {
-      const chat_id = chat.id;
-      if (!chat_id) {
-        console.error('Cannot join a chat without ID');
-        return reject('Cannot join a chat without ID');
+    if (!this.connected) {
+      console.error('[joinChat] No se puede unir a un chat sin conexión');
+      return reject('Cannot join a chat without connection');
+    }
+    if (this.subscribedChats.has(chat_id)) {
+      console.log('[joinChat] Ya está suscrito al chat', chat_id);
+      return resolve();
+    }
+  
+    // Suscribirse al tópico del chat
+    const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
+      console.log(`[joinChat] Mensaje recibido en chat ${chat_id}:`, message.body);
+      const parsedMessage = JSON.parse(message.body);
+      const { content, sender, timestamp, id, type } = parsedMessage;
+  
+      // Actualizar la fecha más reciente del chat
+      const chatIndex = this.chats.findIndex(c => c.id === chat_id);
+      if (chatIndex !== -1) {
+        this.chats[chatIndex].lastMessageDate = new Date(timestamp);
+        console.log(`[joinChat] Actualizando fecha del chat ${chat_id} a ${timestamp}`);
+        this.sortAndNotifyChats();
       }
-
-      if (!this.connected) {
-        console.error('Cannot join a chat without connection');
-        return reject('Cannot join a chat without connection');
+  
+      // Asegurarse de que exista la lista de mensajes para el chat
+      if (!this.chatMessages[chat_id]) {
+        this.chatMessages[chat_id] = [];
       }
-
-      if (this.subscribedChats.has(chat_id)) {
-        return resolve();
-      }
-
-      const subscription = this.stompClient.subscribe(`/topic/chat/${chat_id}`, (message: any) => {
-        const parsedMessage = JSON.parse(message.body);
-        const { content, sender, timestamp, id, type } = parsedMessage;
-
-        // Actualizar la fecha más reciente del chat
-        const chatIndex = this.chats.findIndex(c => c.id === chat_id);
-        if (chatIndex !== -1) {
-          this.chats[chatIndex].lastMessageDate = new Date(timestamp);
-          // Ordenar los chats por fecha más reciente
-          this.sortAndNotifyChats();
-        }
-
-        if (!this.chatMessages[chat_id]) {
-          this.chatMessages[chat_id] = [];
-        }
-
-        const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
-
-        if (!messageExists) {
-          // Agregar el mensaje al historial
-          if (type == MessageType.IMAGE) {
-            this.authService.getImage('message', content).subscribe((imageUrl: string) => {
-              const newMessage = { content: imageUrl, sender, timestamp, id, type };
-              this.chatMessages[chat_id].push(newMessage);
-
-              const chat = this.chats.find(c => c.id === chat_id);
-              if (chat) {
-                chat.lastMessage = 'Image';
-                this.notifyNewMessage({ content: 'Image', chatId: chat_id, sender });
-              }
-            });
-          } else {
-            const newMessage = { content, sender, timestamp, id, type };
+  
+      const messageExists = this.chatMessages[chat_id].find((message: Message) => message.id === id);
+  
+      if (!messageExists) {
+        // Agregar el mensaje al historial
+        if (type === MessageType.IMAGE) {
+          this.authService.getImage('message', content).subscribe((imageUrl: string) => {
+            const newMessage = { content: imageUrl, sender, timestamp, id, type };
+            console.log(`[joinChat] Mensaje de imagen procesado para chat ${chat_id}:`, newMessage);
             this.chatMessages[chat_id].push(newMessage);
-
-            const chat = this.chats.find(c => c.id === chat_id);
-            if (chat) {
-              chat.lastMessage = content;
-              chat.lastMessageDate = new Date(timestamp);
-              this.sortAndNotifyChats();
-              this.notifyNewMessage({ content, chatId: chat_id, sender });
+  
+            const targetChat = this.chats.find(c => c.id === chat_id);
+            if (targetChat) {
+              targetChat.lastMessage = 'Image';
+              console.log(`[joinChat] Notificando nuevo mensaje (Image) para chat ${chat_id}`);
+              this.notifyNewMessage({ content: 'Image', chatId: chat_id, sender });
             }
-          }
-        } else {
-          messageExists.read = true;
-        }
-      });
-
-      this.subscribedChats.add(chat_id);
-      this.subscriptions.set(chat_id, subscription);
-
-      this.chatService.getMessages(chat_id).subscribe(
-        (messages: Message[]) => {
-          const images = messages.filter((message: Message) => message.type == MessageType.IMAGE);
-          images.forEach((image: Message) => {
-            this.authService.getImage('message', image.content).subscribe((imageUrl: string) => {
-              image.content = imageUrl;
-            });
           });
-          this.chatMessages[chat_id] = messages;
-
-          const unreadCount = messages.filter((msg: Message) => !msg.read && Number(msg.sender) !== Number(this.userId)).length;
-          const chat = this.chats.find(c => c.id === chat_id);
-          if (chat) {
-            chat.unreadCount = unreadCount;
+        } else {
+          const newMessage = { content, sender, timestamp, id, type };
+          console.log(`[joinChat] Se creó un nuevo mensaje de texto para chat ${chat_id}:`, newMessage);
+          this.chatMessages[chat_id].push(newMessage);
+  
+          const targetChat = this.chats.find(c => c.id === chat_id);
+          if (targetChat) {
+            targetChat.lastMessage = content;
+            targetChat.lastMessageDate = new Date(timestamp);
+            console.log(`[joinChat] Actualizando chat ${chat_id} con mensaje: ${content}`);
+            this.sortAndNotifyChats();
+            console.log(`[joinChat] Notificando nuevo mensaje para chat ${chat_id}`);
+            this.notifyNewMessage({ content, chatId: chat_id, sender });
           }
-
-          // Actualizar la fecha del último mensaje
+        }
+      } else {
+        console.log(`[joinChat] Mensaje ya existente en chat ${chat_id} con id: ${id}`);
+        messageExists.read = true;
+      }
+    });
+  
+    this.subscribedChats.add(chat_id);
+    this.subscriptions.set(chat_id, subscription);
+    console.log(`[joinChat] Suscripción establecida para chat ${chat_id}`);
+  
+    // Obtener los mensajes iniciales del chat
+    this.chatService.getMessages(chat_id).subscribe(
+      (messages: Message[]) => {
+        console.log(`[joinChat] Mensajes iniciales para chat ${chat_id}:`, messages);
+        const images = messages.filter((msg: Message) => msg.type === MessageType.IMAGE);
+        images.forEach((msg: Message) => {
+          this.authService.getImage('message', msg.content).subscribe((imageUrl: string) => {
+            msg.content = imageUrl;
+            console.log(`[joinChat] Imagen actualizada para mensaje ${msg.id} en chat ${chat_id}`);
+          });
+        });
+        this.chatMessages[chat_id] = messages;
+  
+        const unreadCount = messages.filter((msg: Message) => !msg.read && Number(msg.sender) !== Number(this.userId)).length;
+        const targetChat = this.chats.find(c => c.id === chat_id);
+        if (targetChat) {
+          targetChat.unreadCount = unreadCount;
+          console.log(`[joinChat] Contador de mensajes sin leer para chat ${chat_id}: ${unreadCount}`);
           if (messages.length > 0) {
             const lastMessage = messages[messages.length - 1];
-            const chat = this.chats.find(c => c.id === chat_id);
-            if (chat) {
-              chat.lastMessageDate = new Date(lastMessage.timestamp);
-              chat.lastMessage = lastMessage.type === MessageType.IMAGE ? 'Image' : lastMessage.content;
-              this.sortAndNotifyChats();
-            }
+            targetChat.lastMessageDate = new Date(lastMessage.timestamp);
+            targetChat.lastMessage = lastMessage.type === MessageType.IMAGE ? 'Image' : lastMessage.content;
+            console.log(`[joinChat] Último mensaje actualizado en chat ${chat_id}: ${targetChat.lastMessage}`);
+            this.sortAndNotifyChats();
           }
-
-          resolve();
-        },
-        error => {
-          console.error('Error fetching messages:', error);
-          reject(error);
         }
-      );
-    });
-  }
+        resolve();
+      },
+      error => {
+        console.error(`[joinChat] Error obteniendo mensajes para chat ${chat_id}:`, error);
+        reject(error);
+      }
+    );
+  });
+}
 
   leaveChat(chat_id: number) {
     if (!this.connected) {
@@ -271,7 +280,7 @@ export class WebSocketService {
     const chat = this.chats.find(c => c.id === message.chatId);
     if (chat) {
       if (message.sender != this.userId) {
-        console.log("Sender of the message: ", message.sender, "User ID: ", this.userId);
+        console.log("Console log 2", "Sender of the message: ", message.sender, "User ID: ", this.userId);
         chat.unreadCount = (chat.unreadCount || 0) + 1;
       }
       chat.lastMessage = message.content;
