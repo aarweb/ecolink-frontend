@@ -5,6 +5,7 @@ import { Router } from '@angular/router';
 import { CartCountService } from '../../../core/services/cart-count.service';
 import { ChatService } from '../../../modules/chat/services/chat.service';
 import { Message } from '../../../modules/chat/models/Message';
+import { interval, Subscription, switchMap } from 'rxjs';
 
 @Component({
   selector: 'shared-header',
@@ -22,6 +23,8 @@ export class HeaderComponent implements OnInit {
   userFullName: string | null = null;
   countCart: number = 0;
   counMessage: string = "0";
+
+  private unreadMessagesSubscription!: Subscription;
 
   constructor(
     private authService: AuthService,
@@ -58,11 +61,12 @@ export class HeaderComponent implements OnInit {
         this.countCart = count;
       })
 
-      this.chatService.getUnreadMessages().subscribe((messages: Message[]) => {
-        const count = messages.length;
-        this.counMessage = count > 9 ? '9+' : count < 1 ? '0' : count.toString();
-        
-      });
+      this.unreadMessagesSubscription = interval(10000)
+        .pipe(switchMap(() => this.chatService.getUnreadMessages()))
+        .subscribe((messages: Message[]) => {
+          const count = messages.length;
+          this.counMessage = count > 9 ? '9+' : count < 1 ? '0' : count.toString();
+        });
     });
   }
 
