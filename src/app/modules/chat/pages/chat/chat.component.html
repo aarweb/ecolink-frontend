@@ -27,7 +27,10 @@
                     <div class="d-flex align-items-center border-bottom p-3">
                         <img [src]="chatSelected?.imageUrl" alt="Avatar" class="rounded-circle me-3"
                             style="width: 50px; height: 50px;">
-                        <h3 class="h5 m-0">{{ chatSelected?.name }}</h3>
+                        <h3 class="h5 m-0">
+                            {{ chatSelected?.name }}
+                            <small *ngIf="chatIsSelf()" class="text-muted">(private)</small>
+                        </h3>
                     </div>
                     <div #messageContainer class="flex-grow-1 overflow-auto p-3 d-flex flex-column"
                         style="height: 60vh;" (scroll)="onScroll($event)">
@@ -72,8 +75,9 @@
                                 (keypress)="handleKeyPress($event)"
                                 [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}" />
                             <div class="d-flex gap-1">
-                                <button *ngIf="messageContent.length <= 0 && chatSelected?.id != null && chatSelected?.id != -1" class="btn btn-info rounded-circle"
-                                        (click)="toggleImageSubmit()">
+                                <button
+                                    *ngIf="messageContent.length <= 0 && chatSelected?.id != null && chatSelected?.id != -1"
+                                    class="btn btn-info rounded-circle" (click)="toggleImageSubmit()">
                                     <i *ngIf="!isSubmittingImage" class="bi bi-image"></i>
                                     <i *ngIf="isSubmittingImage" class="bi bi-chat-left-text-fill"></i>
                                 </button>

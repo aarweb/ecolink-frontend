@@ -56,6 +56,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     });
   }
 
+
   ngOnDestroy(): void {
     // Limpiar suscripciones
     if (this.observer) {
@@ -236,6 +237,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       }
     });
   }
+  
 
   joinChats(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -377,5 +379,10 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       },
       error: (error) => console.error("Error al enviar imagen", error)
     });
+  }
+  chatIsSelf(): boolean {
+    // Esta condición depende de cómo identifiques una conversación consigo mismo.
+    // Por ejemplo, si el nombre del chat es igual al nombre del usuario, se interpreta como self-chat.
+    return this.chatSelected && this.user && this.chatSelected.name === this.user.name;
   }
 }
