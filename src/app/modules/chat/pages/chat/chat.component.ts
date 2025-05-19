@@ -179,9 +179,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
               console.log('Nuevo chat recibido:', chat);
               const unreadCount = this.chats.filter(c => c.id === chat.id).length;
               chat.unreadCount = unreadCount;
-              // Suscribirse a los mensajes para este chat
               this.webSocketService.joinChat(chat).then(() => {
-                // SOLO ACTUALIZAR la vista si el chat activo es el mismo
                 if (this.chatSelected && this.chatSelected.id === chat.id) {
                   this.messages = this.webSocketService.getMessages(chat.id);
                   this.scrollToBottom();
@@ -314,12 +312,21 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     }, 100);
   }
 
-  sendNewChatMessage() {
-    this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
-      this.webSocketService.notifyNewChat(this.id);
-      this.router.navigate(['/chat/' + chat.id]);
-    });
+ sendNewChatMessage() {
+  const existingChat = this.chats.find(chat => chat.id !== -1 && chat.name === this.receiver);
+  if (existingChat) {
+    console.log('El chat ya existe, activándolo:', existingChat.id);
+    this.chats = this.chats.filter(c => c.id !== -1);
+    this.onSelectChat(existingChat.id);
+    return; // No se envía la solicitud para crear un chat nuevo.
   }
+  
+
+  this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
+    this.webSocketService.notifyNewChat(this.id);
+    this.router.navigate(['/chat/' + chat.id]);
+  });
+}
 
   goToMessage(message: Message) {
     const messageElement = document.getElementById(message.timestamp);
@@ -381,8 +388,6 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     });
   }
   chatIsSelf(): boolean {
-    // Esta condición depende de cómo identifiques una conversación consigo mismo.
-    // Por ejemplo, si el nombre del chat es igual al nombre del usuario, se interpreta como self-chat.
     return this.chatSelected && this.user && this.chatSelected.name === this.user.name;
   }
 }
