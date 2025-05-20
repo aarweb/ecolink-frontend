@@ -91,14 +91,14 @@
             </a>
           </li>
           
-          <li class="nav-item mx-1 d-lg-none" *ngIf="isLogged">
-            <a *ngIf="isLogged" href="/chat" class="position-relative">
+            <li class="nav-item mx-1 d-lg-none" *ngIf="isLogged && (isStartup || isCompany)">
+            <a href="/chat" class="position-relative">
               <i class="bi bi-chat-square-quote text-light fs-4"></i>
               <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                {{counMessage}}
+              {{counMessage}}
               </span>
             </a>
-          </li>
+            </li>
           <!-- Separador -->
           <hr class="text-light my-3">
 
