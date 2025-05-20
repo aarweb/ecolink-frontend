@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { StartupService } from '../../services/startup.service';
 import { StartupDetails } from '../../models/StartupDetails';
 import { AuthService } from '../../../../auth/services/AuthService.service';
+import { User } from '../../../../core/models/User';
 
 @Component({
   selector: 'startup-detail',
@@ -14,10 +15,24 @@ export class StartupDetailComponent implements OnInit {
   startup!: StartupDetails;
   showProducts: boolean = true;
   showProposals: boolean = false;
+  isStartup: boolean = false;
+  isCompany: boolean = false;
+  isLogged: boolean = false;
 
   constructor(private route: ActivatedRoute, private startupService: StartupService, private authService: AuthService) { }
 
   ngOnInit(): void {
+    this.authService.getCurrentUser().subscribe((user: User) => {
+      this.isLogged = !!user;
+      if (user) {
+        if (user.userType.toUpperCase() === 'STARTUP') {
+          this.isStartup = true;
+        } else if (user.userType.toUpperCase() === 'COMPANY') {
+          this.isCompany = true;
+        }
+      }
+    }
+    );
     this.startupId = this.route.snapshot.paramMap.get('id');
     if (this.startupId === null) return;
     this.startupService.findStartupById(this.startupId).subscribe((startup: StartupDetails) => {
@@ -38,7 +53,7 @@ export class StartupDetailComponent implements OnInit {
           this.startup.products[i].imageUrl = imageUrl;
         });
       }
-      
+
     }, error => {
       console.error(error);
     });
