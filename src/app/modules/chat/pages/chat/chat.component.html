@@ -82,7 +82,7 @@
                                         [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}"
                                         [disabled]="buttonDisabled">
                                 </ng-template>
-                                <button class="btn rounded-circle border border-0"
+                                <button *ngIf="!isSubmittingImage" class="btn rounded-circle border border-0"
                                     style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); width:40px; height:40px; z-index:10; outline: none;"
                                     (click)="obtenerRespuestaRecomendada()">
                                     <i class="bi bi-stars fs-6 text-warning"></i>

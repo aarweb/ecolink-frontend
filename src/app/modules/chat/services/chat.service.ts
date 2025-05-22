@@ -44,9 +44,13 @@ export class ChatService {
 
   getObtenerRespuesta(mensajes: string[]): Observable<string> {
     let params = new HttpParams();
-    mensajes.forEach(m => {
-      params = params.append('pregunta', m);
-    });
+    if (mensajes && mensajes.length > 0) {
+      mensajes.forEach(m => {
+        params = params.append('pregunta', m);
+      });
+    } else {
+      params = params.append('pregunta', '');
+    }
     return this.http.get(this.baseOpenRouterUrl + '/obtener_respuesta', {
       params,
       withCredentials: true,
