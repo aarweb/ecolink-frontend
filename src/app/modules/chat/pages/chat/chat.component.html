@@ -68,27 +68,42 @@
                     </div>
                     <div class="d-flex flex-column p-3">
                         <div class="d-flex">
-                            <input *ngIf="isSubmittingImage" class="form-control me-2" type="file" id="formFile"
-                                accept=".jpg, .jpeg, .png, .webp" (change)="onFileChange($event)">
-                            <input *ngIf="!isSubmittingImage" type="text" class="form-control me-2"
-                                [(ngModel)]="messageContent" rows="1" placeholder="Escribe tu mensaje..."
-                                (keypress)="handleKeyPress($event)"
-                                [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}" />
+                            <div class="input-group me-2  position-relative">
+                                <ng-container *ngIf="isSubmittingImage; else textInput">
+                                    <input class="form-control" type="file" id="formFile"
+                                        style="outline: none;"
+                                        accept=".jpg, .jpeg, .png, .webp" (change)="onFileChange($event)">
+                                </ng-container>
+                                <ng-template #textInput>
+                                    <input type="text" class="form-control" 
+                                        style="outline: none; padding-right: 50px;"
+                                        [(ngModel)]="messageContent" placeholder="Escribe tu mensaje..."
+                                        (keypress)="handleKeyPress($event)" 
+                                        [ngClass]="{'is-invalid': maxCharacters - messageContent.length < 0}"
+                                        [disabled]="buttonDisabled">
+                                </ng-template>
+                                <button class="btn rounded-circle border border-0"
+                                    style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); width:40px; height:40px; z-index:10; outline: none;"
+                                    (click)="obtenerRespuestaRecomendada()">
+                                    <i class="bi bi-stars fs-6 text-warning"></i>
+                                </button>
+                            </div>
                             <div class="d-flex gap-1">
-                                <button
-                                    *ngIf="messageContent.length <= 0 && chatSelected?.id != null && chatSelected?.id != -1"
+                                <button *ngIf="!buttonDisabled && messageContent.length <= 0 && chatSelected?.id != null && chatSelected?.id != -1"
                                     class="btn btn-info rounded-circle" (click)="toggleImageSubmit()">
                                     <i *ngIf="!isSubmittingImage" class="bi bi-image"></i>
                                     <i *ngIf="isSubmittingImage" class="bi bi-chat-left-text-fill"></i>
                                 </button>
-                                <button *ngIf="!isSubmittingImage" class="btn btn-primary"
-                                    (click)="sendMessage()">Send</button>
-                                <button *ngIf="isSubmittingImage" class="btn btn-primary"
-                                    (click)="submitImage()">Send</button>
+                                <button *ngIf="!isSubmittingImage" class="btn btn-primary" (click)="sendMessage()" [disabled]="buttonDisabled">
+                                    Send
+                                </button>
+                                <button *ngIf="isSubmittingImage" class="btn btn-primary" (click)="submitImage()" [disabled]="buttonDisabled">
+                                    Send
+                                </button>
                             </div>
                         </div>
-                        <p [ngClass]="{'text-danger': maxCharacters - messageContent.length < 0}">{{maxCharacters -
-                            messageContent.length}} characters remaining
+                        <p [ngClass]="{'text-danger': maxCharacters - messageContent.length < 0}">
+                            {{maxCharacters - messageContent.length}} characters remaining
                         </p>
                     </div>
                 </div>

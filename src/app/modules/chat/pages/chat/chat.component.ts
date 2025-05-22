@@ -37,6 +37,9 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   maxCharacters = 255;
   unreadMessages = false;
   isSubmittingImage = false;
+  consultaSolicitada = false;
+  buttonDisabled: boolean = false;
+  animationActive: boolean = false;
 
   constructor(
     private authService: AuthService,
@@ -235,7 +238,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       }
     });
   }
-  
+
 
   joinChats(): Promise<void> {
     return new Promise<void>((resolve, reject) => {
@@ -261,6 +264,7 @@ export class ChatComponent implements OnInit, AfterViewChecked {
       });
     });
   }
+
 
   onSelectChat(id: number) {
     if (this.chatSelected?.id === id) {
@@ -312,21 +316,21 @@ export class ChatComponent implements OnInit, AfterViewChecked {
     }, 100);
   }
 
- sendNewChatMessage() {
-  const existingChat = this.chats.find(chat => chat.id !== -1 && chat.name === this.receiver);
-  if (existingChat) {
-    console.log('El chat ya existe, activándolo:', existingChat.id);
-    this.chats = this.chats.filter(c => c.id !== -1);
-    this.onSelectChat(existingChat.id);
-    return; // No se envía la solicitud para crear un chat nuevo.
-  }
-  
+  sendNewChatMessage() {
+    const existingChat = this.chats.find(chat => chat.id !== -1 && chat.name === this.receiver);
+    if (existingChat) {
+      console.log('El chat ya existe, activándolo:', existingChat.id);
+      this.chats = this.chats.filter(c => c.id !== -1);
+      this.onSelectChat(existingChat.id);
+      return; // No se envía la solicitud para crear un chat nuevo.
+    }
 
-  this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
-    this.webSocketService.notifyNewChat(this.id);
-    this.router.navigate(['/chat/' + chat.id]);
-  });
-}
+
+    this.chatService.create(this.id, this.messageContent).subscribe((chat: ChatUser) => {
+      this.webSocketService.notifyNewChat(this.id);
+      this.router.navigate(['/chat/' + chat.id]);
+    });
+  }
 
   goToMessage(message: Message) {
     const messageElement = document.getElementById(message.timestamp);
@@ -389,5 +393,45 @@ export class ChatComponent implements OnInit, AfterViewChecked {
   }
   chatIsSelf(): boolean {
     return this.chatSelected && this.user && this.chatSelected.name === this.user.name;
+  }
+
+  obtenerRespuestaRecomendada() {
+    if (this.consultaSolicitada) {
+      return;
+    }
+    this.consultaSolicitada = true;
+    this.buttonDisabled = true;
+    this.animationActive = true;
+    // Asignamos el mensaje con animación activa
+    this.messageContent = 'Solicitando mensaje...';
+
+    const recentMessages = this.messages
+      .filter(message => message.type === MessageType.TEXT)
+      .slice(-10)
+      .map(message => {
+        let messageToSave = "";
+        if (message.sender == this.user.id) {
+          messageToSave = `You: ${message.content}`;
+        } else {
+          messageToSave = `${this.chatSelected?.name}: ${message.content}`;
+        }
+        return messageToSave;
+      });
+
+    this.chatService.getObtenerRespuesta(recentMessages).subscribe({
+      next: (respuesta: string) => {
+        this.messageContent = respuesta;
+        this.consultaSolicitada = false;
+        this.buttonDisabled = false;
+        this.animationActive = false;
+      },
+      error: (error) => {
+        console.error('Error al obtener la respuesta recomendada:', error);
+        this.consultaSolicitada = false;
+        this.buttonDisabled = false;
+        this.animationActive = false;
+        this.messageContent = '';
+      }
+    });
   }
 }

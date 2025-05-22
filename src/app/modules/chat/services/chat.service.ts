@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { ChatUser } from '../models/ChatUser';
 import { Observable } from 'rxjs';
 import { Message } from '../models/Message';
@@ -12,6 +12,7 @@ import { Successfull } from '../../blog/models/Successfull';
 })
 export class ChatService {
   private baseUrl: string = environment.apiUrl + '/chat';
+  private baseOpenRouterUrl: string = environment.apiUrl + '/openrouter';
 
   constructor(private http: HttpClient) { }
 
@@ -39,5 +40,17 @@ export class ChatService {
 
   getUnreadMessages(): Observable<Message[]> {
     return this.http.get<Message[]>(this.baseUrl + '/unread', { withCredentials: true });
+  }
+
+  getObtenerRespuesta(mensajes: string[]): Observable<string> {
+    let params = new HttpParams();
+    mensajes.forEach(m => {
+      params = params.append('pregunta', m);
+    });
+    return this.http.get(this.baseOpenRouterUrl + '/obtener_respuesta', {
+      params,
+      withCredentials: true,
+      responseType: 'text'
+    });
   }
 }
